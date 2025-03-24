@@ -568,7 +568,7 @@ uPlayerStatus_t qc_uPlayer::Play (void)
 	/* Decode next frame */
 	qmCall(ReadFrames);
 
-	if (!ReadFrames)
+	if (!framesRead)
 		Next();
 
 	return uPL_OK;
