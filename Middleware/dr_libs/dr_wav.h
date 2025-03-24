@@ -5508,7 +5508,7 @@ DRWAV_API drwav_result drwav_uninit(drwav* pWav)
     was used by looking at the onRead and onSeek callbacks.
     */
     if (pWav->onRead == drwav__on_read_stdio || pWav->onWrite == drwav__on_write_stdio) {
-        fclose((FILE*)pWav->pUserData);
+        f_close((FIL*)pWav->pUserData);
     }
 #endif
 

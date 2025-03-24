@@ -133,7 +133,29 @@
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														Digital Channels
  */
+/* Volume down pin */
+#define		VOLUME_DOWN_GPIO_PORT	GPIOB
+#define 	VOLUME_DOWN_PIN			GPIO_PIN_9
 
+/* Volume up pin */
+#define		VOLUME_UP_GPIO_PORT		GPIOB
+#define 	VOLUME_UP_PIN			GPIO_PIN_8
+
+/* Back pin */
+#define		TRACK_BACK_GPIO_PORT	GPIOC
+#define 	TRACK_BACK_PIN			GPIO_PIN_14
+
+/* Next pin */
+#define		TRACK_NEXT_GPIO_PORT	GPIOC
+#define 	TRACK_NEXT_PIN			GPIO_PIN_13
+
+/* Pause pin */
+#define		TRACK_PAUSE_GPIO_PORT	GPIOC
+#define 	TRACK_PAUSE_PIN			GPIO_PIN_15
+
+
+#define		DIGITAL_GPIO_CLOCK_ENABLE()		__HAL_RCC_GPIOB_CLK_ENABLE();\
+											__HAL_RCC_GPIOC_CLK_ENABLE();
 
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -151,13 +173,14 @@ class qcPeripheral
 		/* SD card handle objects */
 		SPI_HandleTypeDef	SD_SPI_HANDLE;
 
+		/* Peripheral methods */
+		void				SystemClockConfig (void);
+		void				PeriphCommonClockConfig (void);
 
 		void				AllGPIO_ClockEnable (void);
 		void				AllGPIO_ClockDisable (void);
 
 };
-
-//extern qcPeripheral_t Peripheral;
 
 
 NORETURN__ void HardwareErrorHandler (void);

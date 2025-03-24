@@ -91,6 +91,10 @@ extern 		"C" {
 	#define	qmFree(addr)			osFree(addr)
 #endif
 
+#define		qmCreate(type)			(type*)qmMalloc(sizeof(type))
+#define		qmCreateArr(type, size)	(type*)qmMalloc(size)
+#define		qmDestroy(addr)			qmFree(addr); addr = NULL
+
 #define		qmCustomDelay(x)		for (ui32 i = 0; i < x; i++) __NOP();
 
 

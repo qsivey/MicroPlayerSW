@@ -69,6 +69,7 @@
 									<listOptionValue builtIn="false" value="../Middleware/mp3/libhelix/pub"/>
 									<listOptionValue builtIn="false" value="../Middleware/mp3/libhelix/real"/>
 									<listOptionValue builtIn="false" value="../Middleware/dr_libs"/>
+									<listOptionValue builtIn="false" value="../Middleware/printf"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.769519475" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -101,6 +102,7 @@
 									<listOptionValue builtIn="false" value="../Middleware/mp3/libhelix/pub"/>
 									<listOptionValue builtIn="false" value="../Middleware/mp3/libhelix/real"/>
 									<listOptionValue builtIn="false" value="../Middleware/dr_libs"/>
+									<listOptionValue builtIn="false" value="../Middleware/printf"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp.1281019408" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.input.cpp"/>
 							</tool>

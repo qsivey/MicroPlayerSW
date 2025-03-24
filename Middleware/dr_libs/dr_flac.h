@@ -8733,15 +8733,14 @@ static drflac_bool32 drflac__on_seek_stdio(void* pUserData, int offset, drflac_s
 DRFLAC_API drflac* drflac_open_file(const char* pFileName, const drflac_allocation_callbacks* pAllocationCallbacks)
 {
     drflac* pFlac;
-    FIL pFile;
 
-    if (drflac_fopen(&pFile, pFileName, FA_OPEN_EXISTING | FA_READ) != DRFLAC_SUCCESS) {
+    if (drflac_fopen(&FLAC_File, pFileName, FA_OPEN_EXISTING | FA_READ) != DRFLAC_SUCCESS) {
         return NULL;
     }
 
-    pFlac = drflac_open(drflac__on_read_stdio, drflac__on_seek_stdio, (void*)&pFile, pAllocationCallbacks);
+    pFlac = drflac_open(drflac__on_read_stdio, drflac__on_seek_stdio, (void*)&FLAC_File, pAllocationCallbacks);
     if (pFlac == NULL) {
-    	f_close(&pFile);
+    	f_close(&FLAC_File);
         return NULL;
     }
 

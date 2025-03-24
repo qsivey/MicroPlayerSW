@@ -1,13 +1,10 @@
 /** ____________________________________________________________________
  *
- * 	@file		stm32f4xx_it.cpp
+ * 	MicroPlayer project
  *
- *	@author		qsivey
- *
- *	VK / TG:	@qsivey
- *	mail:		qsivey@gmail.com
- *
- *	K-Lab		Laboratory of robotics and mechatronics
+ *	GitHub:		qsivey, Nik125Y
+ *	Telegram:	@qsivey, @Nik125Y
+ *	Email:		qsivey@gmail.com, topnikm@gmail.com
  *	____________________________________________________________________
  */
 
@@ -80,112 +77,48 @@ void DebugMon_Handler (void)
  */
 extern qc_uPlayer uPlayer;
 
-static ui8 pause = 0;
-ui8 dirFlag = 1;  // 0 - back : 2 - next
-
-ui32 buttonTime = 0;
-
 
 void EXTI9_5_IRQHandler (void)
 {
-	if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_9))
+	if (uPlayer.buttonsState == BS_RELEASED)
 	{
-		if ((qmGetTick() - buttonTime) > 500)
-		{
-			uPlayer.VolumeDown();
+		if (__HAL_GPIO_EXTI_GET_IT(VOLUME_DOWN_PIN))
+			uPlayer.SetEvent(uPL_EVENT_VOLUME_DOWN);
 
-			buttonTime = qmGetTick();
-		}
-
-		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
+		else if (__HAL_GPIO_EXTI_GET_IT(VOLUME_UP_PIN))
+			uPlayer.SetEvent(uPL_EVENT_VOLUME_UP);
 	}
 
-	else if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_8))
-	{
-		if ((qmGetTick() - buttonTime) > 500)
-		{
-			uPlayer.VolumeUp();
+	HAL_GPIO_EXTI_IRQHandler(VOLUME_DOWN_PIN);
+	HAL_GPIO_EXTI_IRQHandler(VOLUME_UP_PIN);
 
-			buttonTime = qmGetTick();
-		}
-
-		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_8);
-	}
+	uPlayer.buttonsState = BS_PRESSED;
 }
 
 
 void EXTI15_10_IRQHandler (void)
 {
-	if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_14))
+	if (uPlayer.buttonsState == BS_RELEASED)
 	{
-		if ((qmGetTick() - buttonTime) > 500)
-		{
-			dirFlag = 0;
+		if (__HAL_GPIO_EXTI_GET_IT(TRACK_BACK_PIN))
+			uPlayer.SetEvent(uPL_EVENT_TRACK_BACK);
 
-			buttonTime = qmGetTick();
-		}
+		else if (__HAL_GPIO_EXTI_GET_IT(TRACK_NEXT_PIN))
+			uPlayer.SetEvent(uPL_EVENT_TRACK_NEXT);
 
-		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);
+		else if (__HAL_GPIO_EXTI_GET_IT(TRACK_PAUSE_PIN))
+			uPlayer.SetEvent(uPL_EVENT_TRACK_PAUSE_PLAY);
 	}
 
-	else if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_13))
-	{
-		if ((qmGetTick() - buttonTime) > 500)
-		{
-			dirFlag = 2;
+	HAL_GPIO_EXTI_IRQHandler(TRACK_BACK_PIN);
+	HAL_GPIO_EXTI_IRQHandler(TRACK_NEXT_PIN);
+	HAL_GPIO_EXTI_IRQHandler(TRACK_PAUSE_PIN);
 
-			buttonTime = qmGetTick();
-		}
-
-		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
-	}
-
-	else if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_15))
-	{
-		if ((qmGetTick() - buttonTime) > 500)
-		{
-			if (pause)
-			{
-				uPlayer.DAC_SetMute(AUDIO_MUTE_OFF);
-				uPlayer.DAC_Write(CS43L22_REG_POWER_CTL1, 0x9E);
-
-				HAL_I2S_DMAResume(&uPlayer.DAC_I2S_HANDLE);
-
-				pause = 0;
-			}
-
-			else
-			{
-				uPlayer.DAC_SetMute(AUDIO_MUTE_ON);
-				uPlayer.DAC_Write(CS43L22_REG_POWER_CTL1, 0x01);
-
-				HAL_I2S_DMAPause(&uPlayer.DAC_I2S_HANDLE);
-
-				pause = 1;
-			}
-
-			buttonTime = qmGetTick();
-		}
-
-		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_15);
-	}
+	uPlayer.buttonsState = BS_PRESSED;
 }
-
 
 
 void DAC_I2S_TX_DMA_IRQ_HANDLER (void)
 {
-	/* Half */
-	if (__HAL_DMA_GET_FLAG(&uPlayer.DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_HTIF0_4))
-	{
-		__HAL_DMA_CLEAR_FLAG(&uPlayer.DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_HTIF0_4);
-		uPlayer.bufferOffset = BUFFER_OFFSET_FULL;
-	}
-
-	/* Full */
-	else if (__HAL_DMA_GET_FLAG(&uPlayer.DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_TCIF0_4))
-	{
-		__HAL_DMA_CLEAR_FLAG(&uPlayer.DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_TCIF0_4);
-		uPlayer.bufferOffset = BUFFER_OFFSET_HALF;
-	}
+	uPlayer.DAC_I2S_IRQ_Handler();
 }

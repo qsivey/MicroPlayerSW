@@ -10,6 +10,10 @@
 #define HELIX_MP3_MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define HELIX_MP3_SAMPLES_PER_FRAME 2
 
+
+FIL HMP3_File;
+
+
 static int helix_mp3_skip_id3v2_tag(helix_mp3_t *mp3)
 {
     const size_t id3v2_frame_header_size = 10;
@@ -193,15 +197,14 @@ int helix_mp3_init(helix_mp3_t *mp3, const helix_mp3_io_t *io)
     return err;  
 }
 
-extern FIL MP3_File;
 
 int helix_mp3_init_file(helix_mp3_t *mp3, const char *path)
 {
     /* Open input file */
-    if (f_open(&MP3_File, path, FA_OPEN_EXISTING | FA_READ) != FR_OK)
+    if (f_open(&HMP3_File, path, FA_OPEN_EXISTING | FA_READ) != FR_OK)
        return -ENOENT;
 
-    default_io.user_data = &MP3_File;
+    default_io.user_data = &HMP3_File;
 
     /* Initialize decoder */
     const int err = helix_mp3_init(mp3, &default_io);

@@ -3,6 +3,7 @@ Debug/
 .settings/
 
 # Files
-.mxproject
+*.mxproject
+*.launch
 
 

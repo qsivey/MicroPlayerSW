@@ -30,44 +30,39 @@ WCHAR ff_wtoupper (WCHAR chr)
     return chr;
 }
 
-#include <stdint.h>
 
+WCHAR ff_convert(WCHAR chr, UINT direction)
+{
+	if (direction == 0)
+	{
+		if (chr < 0x80)
+			return chr;
 
-// Реализация функции ff_convert
-WCHAR ff_convert(WCHAR chr, UINT direction) {
-    if (direction == 0) {
-        // Преобразование из UTF-8 -> UTF-16
-        if (chr < 0x80) {
-            // 1 байт UTF-8 (ASCII)
-            return chr;
-        } else if ((chr & 0xE0) == 0xC0) {
-            // 2 байта UTF-8
-            return ((chr & 0x1F) << 6);
-        } else if ((chr & 0xF0) == 0xE0) {
-            // 3 байта UTF-8
-            return ((chr & 0x0F) << 12);
-        } else {
-            // Не поддерживается (резерв для дополнительных расширений)
-            return '?';
-        }
-    } else {
-        // Преобразование из UTF-16 -> UTF-8
-        if (chr < 0x80) {
-            // 1 байт UTF-8 (ASCII)
-            return chr;
-        } else if (chr < 0x800) {
-            // 2 байта UTF-8
-            return (0xC0 | (chr >> 6));
-        } else if (chr < 0x10000) {
-            // 3 байта UTF-8
-            return (0xE0 | (chr >> 12));
-        } else {
-            // Не поддерживается (резерв)
-            return '?';
-        }
-    }
+		else if ((chr & 0xE0) == 0xC0)
+			return ((chr & 0x1F) << 6);
+
+		else if ((chr & 0xF0) == 0xE0)
+			return ((chr & 0x0F) << 12);
+
+		else
+			return '?';
+	}
+
+	else
+	{
+		if (chr < 0x80)
+			return chr;
+
+		else if (chr < 0x800)
+			return (0xC0 | (chr >> 6));
+
+		else if (chr < 0x10000)
+			return (0xE0 | (chr >> 12));
+
+		else
+			return '?';
+	}
 }
-
 
 
 /*--------------------------------------------------------------------------

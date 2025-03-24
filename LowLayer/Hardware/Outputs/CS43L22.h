@@ -126,15 +126,10 @@ class qcCS43L22 : virtual public qcPeripheral
 
 	public :
 
-		qcCS43L22			(void)
-							{
-								currentSampleRate = qcfgINITIAL_SAMPLE_RATE;
-							}
+		ui8					volume;
 
 		qePCM_BufferOffset_t
 							bufferOffset;
-
-		ui8					volume;
 
 
 		void				DAC_Init (void);
@@ -148,10 +143,12 @@ class qcCS43L22 : virtual public qcPeripheral
 
 		void				DAC_SetSampleRate (ui32 sampleRate);
 
+		void				DAC_I2S_IRQ_Handler (void);
+
 };
 
 
-
+// todo clean
 
 #define I2S_STANDARD                  I2S_STANDARD_PHILIPS
 
@@ -226,10 +223,6 @@ class qcCS43L22 : virtual public qcPeripheral
 #define  CS43L22_ID            0xE0
 
 #define  CS43L22_ID_MASK       0xF8
-
-
-
-#define PCM_BUFFER_SIZE		(4096 * 2)  // todo
 
 
 

@@ -137,6 +137,7 @@ void qcCS43L22::DAC_Init (void)
 
 	/* Set volume level */
 	DAC_SetVolume(qcfgINITIAL_VOLUME);
+	volume = qcfgINITIAL_VOLUME;
 
 	/* Disable the analog soft ramp */
 	DAC_Write(CS43L22_REG_ANALOG_ZC_SR_SETT, 0x00);
@@ -164,6 +165,8 @@ void qcCS43L22::DAC_Init (void)
 
 	/* Power on the Codec */
 	DAC_Write(CS43L22_REG_POWER_CTL1, 0x9E);
+
+	currentSampleRate = qcfgINITIAL_SAMPLE_RATE;
 }
 
 
@@ -249,6 +252,8 @@ void qcCS43L22::DAC_SetSampleRate (ui32 sampleRate)
 				HardwareErrorHandler();
 
 			currentSampleRate = 44100;
+
+			break;
 		}
 
 		case 48000 :
@@ -278,7 +283,22 @@ void qcCS43L22::DAC_SetSampleRate (ui32 sampleRate)
 	}
 
 	currentSampleRate = sampleRate;
-
-	HAL_I2S_DMAStop(&DAC_I2S_HANDLE);
 }
 
+
+void qcCS43L22::DAC_I2S_IRQ_Handler (void)
+{
+	/* Half */
+	if (__HAL_DMA_GET_FLAG(&DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_HTIF0_4))
+	{
+		__HAL_DMA_CLEAR_FLAG(&DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_HTIF0_4);
+		bufferOffset = BUFFER_OFFSET_FULL;
+	}
+
+	/* Full */
+	else if (__HAL_DMA_GET_FLAG(&DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_TCIF0_4))
+	{
+		__HAL_DMA_CLEAR_FLAG(&DAC_I2S_TX_DMA_HANDLE, DMA_FLAG_TCIF0_4);
+		bufferOffset = BUFFER_OFFSET_HALF;
+	}
+}

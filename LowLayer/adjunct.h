@@ -125,6 +125,9 @@ typedef enum
 #define		lambdafunc_(body)		([](void) { body; } )
 #define		calcFreeSpaceFIFO(t, h, max)\
 									(((h) >= (t)) ? ((max) - ((h) - (t))) : ((t) - (h)))
+#define		memmove_(pd, ps, size)	for (int q = 0; q < size; q++) { pd[q] = ps[q]; }
+#define		assign_(v, newV)		if (v != newV) v = newV;
+
 
 static inline double ConvertRadiansToDegrees (double radian)
 {

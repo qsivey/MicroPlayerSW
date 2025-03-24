@@ -1,18 +1,15 @@
 /** ____________________________________________________________________
  *
- * 	@file		internalFlash.h
+ * 	MicroPlayer project
  *
- *	@author		qsivey
- *
- *	VK / TG:	@qsivey
- *	mail:		qsivey@gmail.com
- *
- *	K-Lab		Laboratory of robotics and mechatronics
+ *	GitHub:		qsivey, Nik125Y
+ *	Telegram:	@qsivey, @Nik125Y
+ *	Email:		qsivey@gmail.com, topnikm@gmail.com
  *	____________________________________________________________________
  */
 
-#ifndef		_INTERNAL_FLASH_H_
-#define		_INTERNAL_FLASH_H_
+#ifndef		MISC_INTERNAL_FLASH_H_
+#define		MISC_INTERNAL_FLASH_H_
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 
@@ -50,4 +47,4 @@ extern InternalFlashHandle InternalFlash;
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 
-#endif		/* _INTERNAL_FLASH_H_ */
+#endif		/* MISC_INTERNAL_FLASH_H_ */

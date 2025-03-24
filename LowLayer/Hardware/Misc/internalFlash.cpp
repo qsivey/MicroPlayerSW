@@ -1,13 +1,10 @@
 /** ____________________________________________________________________
  *
- * 	@file		internalFlash.cpp
+ * 	MicroPlayer project
  *
- *	@author		qsivey
- *
- *	VK / TG:	@qsivey
- *	mail:		qsivey@gmail.com
- *
- *	K-Lab		Laboratory of robotics and mechatronics
+ *	GitHub:		qsivey, Nik125Y
+ *	Telegram:	@qsivey, @Nik125Y
+ *	Email:		qsivey@gmail.com, topnikm@gmail.com
  *	____________________________________________________________________
  */
 
