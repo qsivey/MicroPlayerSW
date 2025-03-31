@@ -46,6 +46,7 @@ typedef enum
 	uPLFC_NONE						= 0,
 	uPLFC_MP3,
 	uPLFC_FLAC,
+	uPLFC_OGG,
 	uPLFC_WAV
 
 }	uPlayerFileCodec_t;

@@ -27,22 +27,24 @@ WCHAR ff_wtoupper (WCHAR chr)
     if (chr >= 'a' && chr <= 'z')
         return chr - 0x20;
 
+    /* Russian */
+    if (chr >= 1072 && chr <= 1105)
+		return chr - 0x20;
+
     return chr;
 }
 
 
-WCHAR ff_convert(WCHAR chr, UINT direction)
+WCHAR ff_convert (WCHAR chr, UINT direction)
 {
 	if (direction == 0)
 	{
 		if (chr < 0x80)
 			return chr;
 
-		else if ((chr & 0xE0) == 0xC0)
-			return ((chr & 0x1F) << 6);
-
-		else if ((chr & 0xF0) == 0xE0)
-			return ((chr & 0x0F) << 12);
+		/* Russian */
+		else if ((chr >= 1040) && (chr <= 1105))
+			return chr - 864;
 
 		else
 			return '?';
@@ -53,11 +55,9 @@ WCHAR ff_convert(WCHAR chr, UINT direction)
 		if (chr < 0x80)
 			return chr;
 
-		else if (chr < 0x800)
-			return (0xC0 | (chr >> 6));
-
-		else if (chr < 0x10000)
-			return (0xE0 | (chr >> 12));
+		/* Russian */
+		else if ((chr >= 176) && (chr <= 241))
+			return chr + 864;
 
 		else
 			return '?';

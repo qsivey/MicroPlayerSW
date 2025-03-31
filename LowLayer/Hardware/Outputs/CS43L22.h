@@ -114,6 +114,21 @@ typedef enum
 }	qePCM_BufferOffset_t;
 
 
+typedef enum
+{
+	I2S_PLL_SAMPLE_RATE_8K			= 0,
+	I2S_PLL_SAMPLE_RATE_11K			= 0,
+	I2S_PLL_SAMPLE_RATE_16K			= 0,
+	I2S_PLL_SAMPLE_RATE_22K			= 0,
+	I2S_PLL_SAMPLE_RATE_32K			= 430,
+	I2S_PLL_SAMPLE_RATE_44K			= 206,
+	I2S_PLL_SAMPLE_RATE_48K			= 249,
+	I2S_PLL_SAMPLE_RATE_96K			= 0,
+	I2S_PLL_SAMPLE_RATE_192K		= 0
+
+}	qeSampleRatePLL_t;
+
+
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *												General Peripheral Class
  */
@@ -121,6 +136,7 @@ class qcCS43L22 : virtual public qcPeripheral
 {
 	private :
 
+		qeSampleRatePLL_t	currentSampleRatePLL;
 		ui32				currentSampleRate;
 
 
@@ -146,87 +162,6 @@ class qcCS43L22 : virtual public qcPeripheral
 		void				DAC_I2S_IRQ_Handler (void);
 
 };
-
-
-// todo clean
-
-#define I2S_STANDARD                  I2S_STANDARD_PHILIPS
-
-
-
-/* Audio status definition */
-
-#define AUDIO_OK                        0
-
-#define AUDIO_ERROR                     1
-
-#define AUDIO_TIMEOUT                   2
-
-
-
-/* Position in the audio play buffer */
-
-//__IO BUFFER_StateTypeDef buffer_offset = BUFFER_OFFSET_NONE;
-
-
-
-/* Codec output DEVICE */
-
-#define OUTPUT_DEVICE_SPEAKER         1
-
-#define OUTPUT_DEVICE_HEADPHONE       2
-
-#define OUTPUT_DEVICE_BOTH            3
-
-#define OUTPUT_DEVICE_AUTO            4
-
-
-
-/* MUTE commands */
-
-#define AUDIO_MUTE_ON                 1
-
-#define AUDIO_MUTE_OFF                0
-
-
-
-/* Defines for the Audio playing process */
-
-#define PAUSE_STATUS     ((uint32_t)0x00) /* Audio Player in Pause Status */
-
-#define RESUME_STATUS    ((uint32_t)0x01) /* Audio Player in Resume Status */
-
-#define IDLE_STATUS      ((uint32_t)0x02) /* Audio Player in Idle Status */
-
-
-
-
-
-#define AUDIO_RESET_GPIO_CLK_ENABLE()         __GPIOD_CLK_ENABLE()
-
-#define AUDIO_RESET_PIN                       GPIO_PIN_4
-
-#define AUDIO_RESET_GPIO                      GPIOD
-
-
-
-#define CODEC_STANDARD                0x04
-
-#define   CS43L22_REG_MISC_CTL            0x0E
-
-
-
-#define AUDIO_I2C_ADDRESS                     0x94
-
-#define CS43L22_CHIPID_ADDR    0x01
-
-#define  CS43L22_ID            0xE0
-
-#define  CS43L22_ID_MASK       0xF8
-
-
-
-#define AUDIODATA_SIZE                  2   /* 16-bits audio data size */
 
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */

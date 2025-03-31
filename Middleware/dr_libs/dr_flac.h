@@ -8723,10 +8723,10 @@ static drflac_bool32 drflac__on_seek_stdio(void* pUserData, int offset, drflac_s
     DRFLAC_ASSERT(offset >= 0);  /* <-- Never seek backwards. */
 
     if (f_lseek_ext((FIL*)pUserData, offset, (origin == drflac_seek_origin_current) ? SEEK_CUR : SEEK_SET) == FR_OK)
-    	return 0;
+    	return 1;
 
 	else
-		return 1;
+		return 0;
 }
 
 

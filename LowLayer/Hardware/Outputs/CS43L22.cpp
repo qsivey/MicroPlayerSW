@@ -37,7 +37,7 @@ void qcCS43L22::DAC_Init (void)
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_PLLI2S | RCC_PERIPHCLK_I2S_APB1;
-	PeriphClkInitStruct.PLLI2S.PLLI2SN = 206;  // 206 - 44 kHz | 249 - 48 kHz
+	PeriphClkInitStruct.PLLI2S.PLLI2SN = I2S_PLL_SAMPLE_RATE_44K;
 	PeriphClkInitStruct.PLLI2S.PLLI2SM = 8;
 	PeriphClkInitStruct.PLLI2S.PLLI2SR = 4;
 	PeriphClkInitStruct.PLLI2SSelection = RCC_PLLI2SCLKSOURCE_PLLSRC;
@@ -58,10 +58,6 @@ void qcCS43L22::DAC_Init (void)
 	DAC_I2S_TX_DMA_HANDLE.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
 	DAC_I2S_TX_DMA_HANDLE.Init.Mode = DMA_CIRCULAR;
 	DAC_I2S_TX_DMA_HANDLE.Init.Priority = DMA_PRIORITY_HIGH;
-	DAC_I2S_TX_DMA_HANDLE.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
-	DAC_I2S_TX_DMA_HANDLE.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
-	DAC_I2S_TX_DMA_HANDLE.Init.MemBurst = DMA_MBURST_INC8;
-	DAC_I2S_TX_DMA_HANDLE.Init.PeriphBurst = DMA_PBURST_SINGLE;
 
 	if (HAL_DMA_Init(&DAC_I2S_TX_DMA_HANDLE) != HAL_OK)
 		HardwareErrorHandler();
@@ -116,7 +112,7 @@ void qcCS43L22::DAC_Init (void)
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
 	HAL_GPIO_Init(DAC_RESET_GPIO_PORT, &GPIO_InitStruct);
 
-	qmDelayMs(50);
+	qmDelayMs(10);
 
 	/* CS43L22 reset */
 	DAC_Reset();
@@ -161,12 +157,12 @@ void qcCS43L22::DAC_Init (void)
 	DAC_Write(CS43L22_REG_MISC_CTL, 0x06);  // 0x06
 
 	/* Mute */
-	DAC_SetMute(AUDIO_MUTE_ON);
+	DAC_SetMute(CS43L22_AUDIO_MUTE_ON);
 
 	/* Power on the Codec */
 	DAC_Write(CS43L22_REG_POWER_CTL1, 0x9E);
 
-	currentSampleRate = qcfgINITIAL_SAMPLE_RATE;
+	currentSampleRate = 0;
 }
 
 
@@ -189,7 +185,7 @@ void qcCS43L22::DAC_Write (ui8 reg, ui8 value)
 void qcCS43L22::DAC_SetMute (ui32 cmd)
 {
 	/* Set the Mute mode */
-	if (cmd == AUDIO_MUTE_ON)
+	if (cmd == CS43L22_AUDIO_MUTE_ON)
 	{
 		DAC_Write(CS43L22_REG_POWER_CTL2, 0xFF);
 		DAC_Write(CS43L22_REG_HEADPHONE_A_VOL, 0x01);
@@ -200,7 +196,7 @@ void qcCS43L22::DAC_SetMute (ui32 cmd)
 	{
 		DAC_Write(CS43L22_REG_HEADPHONE_A_VOL, 0x00);
 		DAC_Write(CS43L22_REG_HEADPHONE_B_VOL, 0x00);
-		DAC_Write(CS43L22_REG_POWER_CTL2, 0xAF);  // HF
+		DAC_Write(CS43L22_REG_POWER_CTL2, 0xAF);
 	}
 }
 
@@ -230,50 +226,36 @@ void qcCS43L22::DAC_SetSampleRate (ui32 sampleRate)
 	if (currentSampleRate == sampleRate)
 		return;
 
+	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = { 0 };
+
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_PLLI2S | RCC_PERIPHCLK_I2S_APB1;
+	PeriphClkInitStruct.PLLI2S.PLLI2SM = 8;
+	PeriphClkInitStruct.PLLI2S.PLLI2SR = 4;
+	PeriphClkInitStruct.PLLI2SSelection = RCC_PLLI2SCLKSOURCE_PLLSRC;
+	PeriphClkInitStruct.I2sApb1ClockSelection = RCC_I2SAPB1CLKSOURCE_PLLI2S;
+
 	switch (sampleRate)
 	{
+		case 32000 :
+		{
+			PeriphClkInitStruct.PLLI2S.PLLI2SN = I2S_PLL_SAMPLE_RATE_32K;
+			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_32K;
+
+			break;
+		}
+
 		case 44100 :
 		{
-			RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = { 0 };
-
-			PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_PLLI2S | RCC_PERIPHCLK_I2S_APB1;
-			PeriphClkInitStruct.PLLI2S.PLLI2SN = 206;  // 206 - 44 kHz | 249 - 48 kHz
-			PeriphClkInitStruct.PLLI2S.PLLI2SM = 8;
-			PeriphClkInitStruct.PLLI2S.PLLI2SR = 4;
-			PeriphClkInitStruct.PLLI2SSelection = RCC_PLLI2SCLKSOURCE_PLLSRC;
-			PeriphClkInitStruct.I2sApb1ClockSelection = RCC_I2SAPB1CLKSOURCE_PLLI2S;
-
-			if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-				HardwareErrorHandler();
-
+			PeriphClkInitStruct.PLLI2S.PLLI2SN = I2S_PLL_SAMPLE_RATE_44K;
 			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_44K;
-
-			if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
-				HardwareErrorHandler();
-
-			currentSampleRate = 44100;
 
 			break;
 		}
 
 		case 48000 :
 		{
-			RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = { 0 };
-
-			PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_PLLI2S | RCC_PERIPHCLK_I2S_APB1;
-			PeriphClkInitStruct.PLLI2S.PLLI2SN = 249;  // 206 - 44 kHz | 249 - 48 kHz
-			PeriphClkInitStruct.PLLI2S.PLLI2SM = 8;
-			PeriphClkInitStruct.PLLI2S.PLLI2SR = 4;
-			PeriphClkInitStruct.PLLI2SSelection = RCC_PLLI2SCLKSOURCE_PLLSRC;
-			PeriphClkInitStruct.I2sApb1ClockSelection = RCC_I2SAPB1CLKSOURCE_PLLI2S;
-
-			if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-				HardwareErrorHandler();
-
+			PeriphClkInitStruct.PLLI2S.PLLI2SN = I2S_PLL_SAMPLE_RATE_48K;
 			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_48K;
-
-			if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
-				HardwareErrorHandler();
 
 			break;
 		}
@@ -281,6 +263,12 @@ void qcCS43L22::DAC_SetSampleRate (ui32 sampleRate)
 		default :
 			return;  // Not supported sample rate
 	}
+
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+		HardwareErrorHandler();
+
+	if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
+		HardwareErrorHandler();
 
 	currentSampleRate = sampleRate;
 }

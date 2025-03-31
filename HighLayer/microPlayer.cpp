@@ -141,21 +141,14 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_16 (void)
 
 uPlayerStatus_t qc_uPlayer::ReadFLAC_32 (void)
 {
-	// todo check
 	if (bufferOffset == BUFFER_OFFSET_FULL)
-	{
-		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4, (drflac_int32*)PCM_Buffer);
+		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 2, (drflac_int32*)PCM_Buffer);
 
-		bufferOffset = BUFFER_OFFSET_HALF;
-	}
-
-	else
-	{
-		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4,
+	else if (bufferOffset == BUFFER_OFFSET_HALF)
+		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 2,
 				(drflac_int32*)(((drflac_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
-		bufferOffset = BUFFER_OFFSET_FULL;
-	}
+	assign_(bufferOffset, BUFFER_OFFSET_NONE);
 
 	return uPL_OK;
 }
@@ -296,14 +289,16 @@ uPlayerStatus_t qc_uPlayer::InitFolder (const char *folder)
 	}
 
 	fatFS.playlistTrackNames = qmCreateArr(char, totalFileNameLength + totalTrackNumber);
-	fatFS.playlistTrackNamePointers = qmCreateArr(ui16, totalTrackNumber * 2);
+	fatFS.playlistTrackNamePointers = qmCreateArr(ui16, totalTrackNumber * 2 + 2);
 
 	totalFileNameLength = 0;  // For now this is the cursor
 
 	res = f_findfirst(&fatFS.dir, &fatFS.fno, folder, "*");
 
 	/* Write file names and assign the pointers */
-	for (ui32 i = 0; (res == FR_OK) && (fatFS.fno.fname[0]); i++)
+	ui32 i = 0;
+
+	for (; (res == FR_OK) && (fatFS.fno.fname[0]); i++)
 	{
 		if (!(fatFS.fno.fattrib & AM_DIR))  // Skip the folders
 		{
@@ -317,6 +312,8 @@ uPlayerStatus_t qc_uPlayer::InitFolder (const char *folder)
 			res = f_findnext(&fatFS.dir, &fatFS.fno);
 		}
 	}
+
+	fatFS.playlistTrackNamePointers[i] = totalFileNameLength;
 
 	return uPL_OK;
 }
@@ -339,6 +336,10 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 		((qsbCurTrNameEndOfs(4) == 'F') && (qsbCurTrNameEndOfs(3) == 'L') && (qsbCurTrNameEndOfs(2) == 'A') && (qsbCurTrNameEndOfs(1) == 'C')))
 		fileCodec = uPLFC_FLAC;
 
+	else if (((qsbCurTrNameEndOfs(3) == 'o') && (qsbCurTrNameEndOfs(2) == 'g') && (qsbCurTrNameEndOfs(1) == 'g')) ||
+		((qsbCurTrNameEndOfs(3) == 'O') && (qsbCurTrNameEndOfs(2) == 'G') && (qsbCurTrNameEndOfs(1) == 'G')))
+		fileCodec = uPLFC_OGG;
+
 	else if (((qsbCurTrNameEndOfs(3) == 'w') && (qsbCurTrNameEndOfs(2) == 'a') && (qsbCurTrNameEndOfs(1) == 'v')) ||
 		((qsbCurTrNameEndOfs(3) == 'W') && (qsbCurTrNameEndOfs(2) == 'A') && (qsbCurTrNameEndOfs(1) == 'V')))
 		fileCodec = uPLFC_WAV;
@@ -357,6 +358,7 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 				break;
 
 			case uPLFC_FLAC :
+			case uPLFC_OGG :
 				OpenTrack = &qc_uPlayer::OpenFLAC;
 				CloseTrack = &qc_uPlayer::CloseFLAC;
 				break;
@@ -382,7 +384,7 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 	bufferOffset = BUFFER_OFFSET_HALF;
 
 	/* Unmute */
-	DAC_SetMute(AUDIO_MUTE_OFF);
+	DAC_SetMute(CS43L22_AUDIO_MUTE_OFF);
 
 	/* Start DMA */
 	HAL_I2S_Transmit_DMA(&DAC_I2S_HANDLE, (ui16*)PCM_Buffer, qcfgPCM_BUFFER_SIZE);
@@ -394,7 +396,7 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 uPlayerStatus_t qc_uPlayer::DeinitCodec (void)
 {
 	/* Mute */
-	DAC_SetMute(AUDIO_MUTE_ON);
+	DAC_SetMute(CS43L22_AUDIO_MUTE_ON);
 	qmDelayMs(20);
 
 	/* Stoop DMA */
@@ -444,7 +446,7 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 
 			else if (state == uPL_PAUSE)
 			{
-				DAC_SetMute(AUDIO_MUTE_OFF);
+				DAC_SetMute(CS43L22_AUDIO_MUTE_OFF);
 				DAC_Write(CS43L22_REG_POWER_CTL1, 0x9E);
 
 				HAL_I2S_DMAResume(&DAC_I2S_HANDLE);
@@ -553,7 +555,7 @@ uPlayerStatus_t qc_uPlayer::Stop (void)
 
 uPlayerStatus_t qc_uPlayer::Pause (void)
 {
-	DAC_SetMute(AUDIO_MUTE_ON);
+	DAC_SetMute(CS43L22_AUDIO_MUTE_ON);
 	DAC_Write(CS43L22_REG_POWER_CTL1, 0x01);
 	qmDelayMs(20);
 
@@ -581,7 +583,7 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Task (void)
 
 	// todo parse .playlist file
 
-	InitFolder("/mp3");
+	InitFolder("/flac");
 
 	while (1)
 	{

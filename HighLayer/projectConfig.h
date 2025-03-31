@@ -8,8 +8,8 @@
  *	____________________________________________________________________
  */
 
-#ifndef		LOW_LAYER_PROJECT_CONFIG_H_
-#define		LOW_LAYER_PROJECT_CONFIG_H_
+#ifndef		HIGH_LAYER_PROJECT_CONFIG_H_
+#define		HIGH_LAYER_PROJECT_CONFIG_H_
 
 /* = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */
 
@@ -22,7 +22,7 @@
 /* -------------------------------------------------
  * Low Layer Configs
  */
-#define		qcfgANTI_BOUNCE_DELAY	100				// Units: ms
+#define		qcfgANTI_BOUNCE_DELAY	200				// Units: ms
 
 #define		qcfgHAL_TIMEOUT_DELAY	100				// Units: ms
 
@@ -36,11 +36,7 @@
 /* -------------------------------------------------
  * High Layer Configs
  */
-#define		qcfgAVERAGE_NAME_LEN	64
-
 #define		qcfgPCM_BUFFER_SIZE		8192			// Units: bytes * type. 1024 --> 16382 (i16 : x2, i32: x4). 65535 Max
-
-#define		qcfgINITIAL_SAMPLE_RATE	44100			// Units: Hz
 
 #define		qcfgMAX_VOLUME			100				// 1 --> 100
 #define		qcfgMIN_VOLUME			0				// 0 --> 99
@@ -50,4 +46,4 @@
 
 /* = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */
 
-#endif		/* LOW_LAYER_PROJECT_CONFIG_H_ */
+#endif		/* HIGH_LAYER_PROJECT_CONFIG_H_ */
