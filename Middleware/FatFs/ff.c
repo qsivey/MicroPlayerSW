@@ -3900,6 +3900,8 @@ FRESULT f_chdrive (
 #endif
 
 
+#include "stm32f4xx_hal.h"
+
 FRESULT f_chdir (
 	const TCHAR* path	/* Pointer to the directory path */
 )
@@ -3908,9 +3910,9 @@ FRESULT f_chdir (
 	DIR dj;
 	FATFS *fs;
 	DEF_NAMBUF
-
 	/* Get logical drive */
 	res = find_volume(&path, &fs, 0);
+
 	if (res == FR_OK) {
 		dj.obj.fs = fs;
 		INIT_NAMBUF(fs);

@@ -12,11 +12,42 @@
 #define		HARDWARE_PERIPH_MAP_H_
 
 #include	"initialConfig.h"
+#include	"projectConfig.h"
 
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														   DAC Constants
  */
+/* ADC Module Config
+ */
+#define		ADC_HANDLE				qadc1
+#define		ADC_INSTANCE			ADC1
+
+#define		ADC_CLOCK_ENABLE()		__HAL_RCC_ADC1_CLK_ENABLE()
+
+/* -------------------------------------------------
+ * ADC DMA Module Config
+ */
+#define		ADC_DMA_HANDLE	qdma2_adc
+#define		ADC_DMA_STREAM	DMA2_Stream0
+#define		ADC_DMA_CHANNEL	DMA_CHANNEL_0
+
+#define 	ADC_DMA_CH_IRQN			DMA2_Stream0_IRQn
+#define		ADC_DMA_IRQ_HANDLER		DMA2_Stream0_IRQHandler
+
+#define		ADC_DMA_CLOCK_ENABLE()		__HAL_RCC_DMA2_CLK_ENABLE()
+
+/* -------------------------------------------------
+ * ADC Channels Config
+ */
+/* Battery level channel */
+#define		BAT_LEVEL_ADC_CHANNEL	ADC_CHANNEL_2
+
+#define		BAT_LEVEL_GPIO_PORT		GPIOA
+#define		BAT_LEVEL_PIN			GPIO_PIN_2
+
+
+
 /* -------------------------------------------------
  * DAC I2S GPIO Config
  */
@@ -129,6 +160,41 @@
 
 #define		SD_GPIO_CLOCK_ENABLE()	__HAL_RCC_GPIOA_CLK_ENABLE();
 
+/* LCD SPI GPIO Config -------------------------
+ */
+/* LCD SPI MOSI pin */
+#define		LCD_SPI_MOSI_GPIO_PORT	GPIOA
+#define		LCD_SPI_MOSI_PIN		GPIO_PIN_7
+#define		LCD_SPI_MOSI_PIN_AF		GPIO_AF5_SPI1
+
+/* LCD SPI SCL pin */
+#define		LCD_SPI_SCL_GPIO_PORT	GPIOA
+#define		LCD_SPI_SCL_PIN			GPIO_PIN_5
+#define		LCD_SPI_SCL_PIN_AF		GPIO_AF5_SPI1
+
+#define		LCD_SPI_GPIO_CLOCK_ENABLE()		__HAL_RCC_GPIOA_CLK_ENABLE()
+
+/* LCD SPI Module Config -----------------------
+ */
+#define		LCD_SPI_HANDLE			qspi1
+#define		LCD_SPI_INSTANCE		SPI1
+
+#define		LCD_SPI_CLOCK_ENABLE()	__HAL_RCC_SPI1_CLK_ENABLE()
+
+/* LCD Other Pins Config -----------------------
+ */
+/* LCD SPI CS pin */
+#define		LCD_SPI_CS_GPIO_PORT	GPIOB
+#define		LCD_SPI_CS_PIN			GPIO_PIN_0
+
+/* LCD SPI DC pin */
+#define		LCD_SPI_DC_GPIO_PORT	GPIOB
+#define		LCD_SPI_DC_PIN			GPIO_PIN_1
+
+/* LCD SPI RES pin */
+#define		LCD_SPI_RES_GPIO_PORT	GPIOA
+#define		LCD_SPI_RES_PIN			GPIO_PIN_4
+
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														Digital Channels
@@ -165,10 +231,18 @@ class qcPeripheral
 {
 	public:
 
+		/* ADC handle objects */
+		ADC_HandleTypeDef	ADC_HANDLE;
+		DMA_HandleTypeDef	ADC_DMA_HANDLE;
+
 		/* DAC handle objects */
 		I2S_HandleTypeDef	DAC_I2S_HANDLE;
 		DMA_HandleTypeDef	DAC_I2S_TX_DMA_HANDLE;
 		I2C_HandleTypeDef	DAC_I2C_HANDLE;
+
+		/* LCD handle objects */
+		SPI_HandleTypeDef	LCD_SPI_HANDLE;
+		TIM_HandleTypeDef   htim2;
 
 		/* SD card handle objects */
 		SPI_HandleTypeDef	SD_SPI_HANDLE;

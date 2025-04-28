@@ -122,3 +122,9 @@ void DAC_I2S_TX_DMA_IRQ_HANDLER (void)
 {
 	uPlayer.DAC_I2S_IRQ_Handler();
 }
+
+
+void ADC_DMA_IRQ_HANDLER (void)
+{
+	HAL_DMA_IRQHandler(&uPlayer.ADC_DMA_HANDLE);
+}

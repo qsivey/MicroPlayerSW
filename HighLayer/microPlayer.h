@@ -13,6 +13,7 @@
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 
+#include	"analogChannels.h"
 #include	"digitalChannels.h"
 #include	"SD_Card.h"
 #include	"CS43L22.h"
@@ -36,7 +37,7 @@ typedef enum
 	uPL_EVENT_VOLUME_UP				= 0x02,
 	uPL_EVENT_TRACK_BACK			= 0x04,
 	uPL_EVENT_TRACK_NEXT			= 0x08,
-	uPL_EVENT_TRACK_PAUSE_PLAY		= 0x10
+	uPL_EVENT_TRACK_PAUSE_PLAY		= 0x10,
 
 }	uPlayerEvent_t;
 
@@ -95,16 +96,19 @@ typedef struct
 }	qsFatFS_t;
 
 
-class qc_uPlayer : public qcSD_Card, public qcCS43L22, public qcDigitalChannels
+class qc_uPlayer : public qcSD_Card, public qcCS43L22, public qcDigitalChannels, public qcAnalogChannels
 {
 	public :
 
 		/* Low layer objects */
 		uPlayerEvent_t		event;
+		ui32				backlightTimer;
 
 		/* FAT FS objects */
 		qsFatFS_t			fatFS;
 
+		/* GUI */
+		char				printBuf [qcfgPRINT_BUF_SIZE];
 
 		/* Audio codec objects */
 		void*				PCM_Buffer;

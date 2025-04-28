@@ -10,7 +10,6 @@
 
 #include	"microPlayer.h"
 
-
 int main(void)
 {
 	uPlayer.Task();

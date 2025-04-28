@@ -16,6 +16,8 @@
 #include	"dr_flac.h"
 #include	"dr_wav.h"
 
+#include    "st7789.h"
+
 /* Offset from the current track name end symbol */
 #define		qsbCurTrNameEndOfs(ofs)	(fatFS.playlistTrackNames[fatFS.playlistTrackNamePointers[trackNumber + 1] - 1 - ofs])
 
@@ -238,8 +240,25 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	/* Enable all GPIOs */
 	AllGPIO_ClockEnable();
 
+	/* Analog channels init */
+	ADC_Init();
+
 	/* All buttons init */
 	ButtonsInit();
+
+	/* Display init */
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	GPIO_InitStruct.Pin			= GPIO_PIN_10;
+	GPIO_InitStruct.Mode		= GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull		= GPIO_NOPULL;
+	GPIO_InitStruct.Speed		= GPIO_SPEED_FREQ_HIGH;
+
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+
+	init_board();
 
 	/* Mount file system */
 	extern Diskio_drvTypeDef SD_Driver [];
@@ -255,6 +274,9 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	/* Service variable init */
 	currentCodec = uPLFC_NONE;
 	trackNumber = 0;
+
+	event = uPL_EVENT_NONE;
+	backlightTimer = qmGetTick();
 
 	playMode = (uPlayerPlayMode_t)(uPL_MODE_NORMAL | uPL_MODE_REPEAT_PLAYLIST);
 
@@ -413,6 +435,9 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 {
 	if (event == uPL_EVENT_NONE)
 		return uPL_OK;
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+	backlightTimer = qmGetTick();
 
 	switch (event)
 	{
@@ -580,10 +605,11 @@ uPlayerStatus_t qc_uPlayer::Play (void)
 NORETURN__ uPlayerStatus_t qc_uPlayer::Task (void)
 {
 	Init();
-
 	// todo parse .playlist file
 
 	InitFolder("/flac");
+
+	ui32 BatteryLevelTime = 0;
 
 	while (1)
 	{
@@ -591,6 +617,15 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Task (void)
 			Play();
 
 		ButtonsHandle();
+
+		if ((qmGetTick() - BatteryLevelTime) > 2000)
+		{
+			ReadBatteryLevel();
+			BatteryLevelTime = qmGetTick();
+		}
+
+		if ((qmGetTick() - backlightTimer) > qcfgBACKLIGHT_TIMER)
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
 
 		EventHandler();
 	}
