@@ -154,7 +154,6 @@ class qcCS43L22 : virtual public qcPeripheral
 		void				DAC_Write (ui8 reg, ui8 value);
 
 		void				DAC_SetMute (ui32 cmd);
-		ui8					DAC_ConvertVolume (ui8 volume) { return (volume > 100) ? 255 : ((volume * 255) / 100); }
 		void				DAC_SetVolume (ui8 volume);
 
 		void				DAC_SetSampleRate (ui32 sampleRate);

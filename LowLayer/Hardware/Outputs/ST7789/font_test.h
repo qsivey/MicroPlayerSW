@@ -23,4 +23,5 @@ typedef struct {
 extern tFont Font2;
 //extern tFont Font3;
 extern tFont Font4;
+extern tFont Font20;
 #endif

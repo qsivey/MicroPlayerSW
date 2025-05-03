@@ -38,6 +38,7 @@ void EXTI9_5_IRQHandler (void);
 void EXTI15_10_IRQHandler (void);
 void DAC_I2S_TX_DMA_IRQ_HANDLER (void);
 void ADC_DMA_IRQ_HANDLER (void);
+void LCD_SPI_TX_DMA_IRQ_HANDLER (void);
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 #ifdef 		__cplusplus

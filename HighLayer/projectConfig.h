@@ -38,14 +38,15 @@
  */
 #define		qcfgPCM_BUFFER_SIZE		8192			// Units: bytes * type. 1024 --> 16382 (i16 : x2, i32: x4). 65535 Max
 
+#define		qcfgVOLUME_BAR_TIMER	2000			// Units: ms
+
 #define		qcfgBACKLIGHT_TIMER		100000			// Units: ms
 
 #define		qcfgPRINT_BUF_SIZE		64
 
-#define		qcfgMAX_VOLUME			100				// 1 --> 100
-#define		qcfgMIN_VOLUME			0				// 0 --> 99
-#define		qcfgINITIAL_VOLUME		70				// 0 --> 100
-#define		qcfgVOLUME_PITCH		4				// 1 --> 100
+#define		qcfgMAX_VOLUME			16				// 1 --> 16
+#define		qcfgMIN_VOLUME			0				// 0 --> 15
+#define		qcfgINITIAL_VOLUME		10				// 0 --> 16
 
 
 /* = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */

@@ -5,6 +5,40 @@
 #include "font_test.h"
 #include "periph.h"
 
+#define	displayAssert(x, y)			if ((x < 0) || (x >= ST7789_WIDTH) ||\
+										(y < 0) || (y >= ST7789_HEIGHT))\
+										return
+
+#define	displayCheckTxMode(mode)	if (SPI_TxDMA_Mode != mode)\
+									{\
+										if (mode == TXDMAM_INCREMENT_MEMORY)\
+										{\
+											__HAL_SPI_DISABLE(&LCD_SPI_HANDLE);\
+											__HAL_DMA_DISABLE(&LCD_SPI_TX_DMA_HANDLE);\
+											LCD_SPI_TX_DMA_HANDLE.Init.MemInc = DMA_MINC_ENABLE;\
+											LCD_SPI_TX_DMA_HANDLE.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;\
+											LCD_SPI_TX_DMA_HANDLE.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;\
+											HAL_DMA_Init(&LCD_SPI_TX_DMA_HANDLE);\
+											__HAL_SPI_ENABLE(&LCD_SPI_HANDLE);\
+											SPI_TxDMA_Mode = TXDMAM_INCREMENT_MEMORY;\
+										}\
+										\
+										else\
+										{\
+											__HAL_SPI_DISABLE(&LCD_SPI_HANDLE);\
+											__HAL_DMA_DISABLE(&LCD_SPI_TX_DMA_HANDLE);\
+											LCD_SPI_TX_DMA_HANDLE.Init.MemInc = DMA_MINC_DISABLE;\
+											LCD_SPI_TX_DMA_HANDLE.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;\
+											LCD_SPI_TX_DMA_HANDLE.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;\
+											HAL_DMA_Init(&LCD_SPI_TX_DMA_HANDLE);\
+											__HAL_SPI_ENABLE(&LCD_SPI_HANDLE);\
+											SPI_TxDMA_Mode = TXDMAM_STATIC_MEMORY;\
+										}\
+									}
+
+//#undef displayCheckTxMode
+//#define	displayCheckTxMode(mode)
+
 /* choose a Hardware SPI port to use. */
 #define ST7789_SPI_PORT hspi1
 
@@ -209,57 +243,72 @@
 #define ST7789_COLOR_MODE_16bit 0x55    //  RGB565 (16bit)
 #define ST7789_COLOR_MODE_18bit 0x66    //  RGB666 (18bit)
 
-/* Basic operations */
-#define ST7789_RST_Clr() HAL_GPIO_WritePin(ST7789_RST_PORT, ST7789_RST_PIN, GPIO_PIN_RESET)
-#define ST7789_RST_Set() HAL_GPIO_WritePin(ST7789_RST_PORT, ST7789_RST_PIN, GPIO_PIN_SET)
-
-#define ST7789_DC_Clr() HAL_GPIO_WritePin(ST7789_DC_PORT, ST7789_DC_PIN, GPIO_PIN_RESET)
-#define ST7789_DC_Set() HAL_GPIO_WritePin(ST7789_DC_PORT, ST7789_DC_PIN, GPIO_PIN_SET)
-#ifndef CFG_NO_CS
-#define ST7789_Select() HAL_GPIO_WritePin(ST7789_CS_PORT, ST7789_CS_PIN, GPIO_PIN_RESET)
-#define ST7789_UnSelect() HAL_GPIO_WritePin(ST7789_CS_PORT, ST7789_CS_PIN, GPIO_PIN_SET)
-#else
-#define ST7789_Select() asm("nop")
-#define ST7789_UnSelect() asm("nop")
-#endif
-
 #define ABS(x) ((x) > 0 ? (x) : -(x))
 
-/* Basic functions. */
-void ST7789_Init(void);
-void ST7789_SetRotation(uint8_t m);
-void ST7789_Fill_Color(uint16_t color);
-void ST7789_DrawPixel(uint16_t x, uint16_t y, uint16_t color);
-void ST7789_Fill(uint16_t xSta, uint16_t ySta, uint16_t xEnd, uint16_t yEnd, uint16_t color);
-void ST7789_DrawPixel_4px(uint16_t x, uint16_t y, uint16_t color);
-void init_board (void);
 
-/* Graphical functions. */
-void ST7789_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
-void ST7789_DrawRectangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
-void ST7789_DrawCircle(uint16_t x0, uint16_t y0, uint8_t r, uint16_t color);
-void ST7789_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t *data);
-void ST7789_InvertColors(uint8_t invert);
+typedef enum
+{
+	TXDMAM_STATIC_MEMORY			= 0,
+	TXDMAM_INCREMENT_MEMORY			= 1
 
-/* Text functions. */
-//void ST7789_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor);
-//void ST7789_WriteString(uint16_t x, uint16_t y, const char *str, FontDef font, uint16_t color, uint16_t bgcolor);
-void Translation(char *s, char *output, ui8 length);
-ui16 Paint(ui16 color, ui16 bgcolor, ui8 alpha);
-void ST7789_WriteChar_Test(uint16_t x, uint16_t y, char ch, tFont *font, uint16_t color, uint16_t bgcolor);
-void ST7789_WriteString_Test(uint16_t x, uint16_t y, const char *str, tFont *font, uint16_t color, uint16_t bgcolor);
+}	qeTxDMA_Mode_t;
 
-/* Extented Graphical functions. */
-void ST7789_DrawFilledRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
-void ST7789_DrawTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color);
-void ST7789_DrawFilledTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color);
-void ST7789_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
 
-/* Command functions */
-void ST7789_TearEffect(uint8_t tear);
+class qcST7789 : virtual public qcPeripheral
+{
+	private :
 
-/* Simple test function. */
-void ST7789_Test(void);
+		qeTxDMA_Mode_t		SPI_TxDMA_Mode;
+
+		void				Reset (void) { HAL_GPIO_WritePin(ST7789_RST_PORT, ST7789_RST_PIN, GPIO_PIN_RESET); }
+		void				Unreset (void) { HAL_GPIO_WritePin(ST7789_RST_PORT, ST7789_RST_PIN, GPIO_PIN_SET); }
+		void				Command (void) { HAL_GPIO_WritePin(ST7789_DC_PORT, ST7789_DC_PIN, GPIO_PIN_RESET); }
+		void				Data (void) { HAL_GPIO_WritePin(ST7789_DC_PORT, ST7789_DC_PIN, GPIO_PIN_SET); }
+		void				Select (void) { HAL_GPIO_WritePin(ST7789_CS_PORT, ST7789_CS_PIN, GPIO_PIN_RESET); }
+		void				Unselect (void) { HAL_GPIO_WritePin(ST7789_CS_PORT, ST7789_CS_PIN, GPIO_PIN_SET); }
+
+		void				DriverInit (void);
+
+		void				SPI_Transmit (ui8 *pData, ui16 size);
+		void				SPI_TransmitDMA (ui8 *pData, ui32 size);
+
+		void				WriteCommand (ui8 cmd);
+		void				WriteData (ui8 *buff, ui32 size);
+		void				WriteData16Bit (ui16 buff, ui32 size);
+		void				WriteSmallData (ui8 data);
+
+		void				SetAddressWindow (ui16 x0, ui16 y0, ui16 x1, ui16 y1);
+
+		void				SetRotation (ui8 m);
+
+		void				Translation (char *s, char *output, ui8 length);
+		ui16				Paint (ui16 color, ui16 bgColor, ui8 alpha);
+
+		void				DrawPixel (ui16 x, ui16 y, ui16 color);
+
+	public :
+
+		void				ST7789_Init (void);
+
+		void				ST7789_InvertColors (ui8 invert);
+
+		void				ST7789_DrawPixel (ui16 x, ui16 y, ui16 color);
+		void				ST7789_FillColor (ui16 color);
+		void				ST7789_DrawLine (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 color);
+		void				ST7789_DrawRectangle(ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 thick, ui16 color);
+		void				ST7789_DrawFilledRectangle(ui16 x, ui16 y, ui16 w, ui16 h, ui16 color);
+		void				ST7789_DrawCircle (ui16 x0, ui16 y0, ui8 r, ui16 color);
+		void				ST7789_DrawTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
+		void				ST7789_DrawFilledTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
+		void				ST7789_DrawFilledCircle (i16 x0, i16 y0, i16 r, ui16 color);
+
+		void				ST7789_WriteChar (ui16 x, ui16 y, char ch, tFont *font, ui16 color, ui16 bgColor);
+		void				ST7789_WriteString (ui16 x, ui16 y, char *str, tFont *font, ui16 color, ui16 bgColor);
+
+		void				ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
+
+};
+
 
 #ifndef ST7789_ROTATION
     #error You should at least choose a display rotation!

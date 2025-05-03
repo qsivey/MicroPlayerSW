@@ -203,7 +203,7 @@ void qcCS43L22::DAC_SetMute (ui32 cmd)
 
 void qcCS43L22::DAC_SetVolume (ui8 volume)
 {
-	ui8 convertedVolume = DAC_ConvertVolume(volume);
+	ui8 convertedVolume = min_(volume * 16, UINT8_MAX);
 
 	if (convertedVolume > 0xE6)
 	{

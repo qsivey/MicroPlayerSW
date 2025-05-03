@@ -7,6 +7,11 @@
  *	Email:		qsivey@gmail.com, topnikm@gmail.com
  *	____________________________________________________________________
  */
+/*	Note:
+ * 		- See DMAx request mapping for streams and channels in reference
+ * 		manual;
+ * 		- See STM32x alternate functions in datasheet
+ */
 
 #ifndef		HARDWARE_PERIPH_MAP_H_
 #define		HARDWARE_PERIPH_MAP_H_
@@ -16,7 +21,7 @@
 
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
- *														   DAC Constants
+ *													   ADC Configuration
  */
 /* ADC Module Config
  */
@@ -47,7 +52,9 @@
 #define		BAT_LEVEL_PIN			GPIO_PIN_2
 
 
-
+/* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+ *													   DAC Configuration
+ */
 /* -------------------------------------------------
  * DAC I2S GPIO Config
  */
@@ -123,6 +130,10 @@
 
 #define		DAC_I2S_DMA_CLOCK_ENABLE()		__HAL_RCC_DMA1_CLK_ENABLE()
 
+
+/* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+ *												   SD Card Configuration
+ */
 /* -------------------------------------------------
  * SD SPI GPIO Config
  */
@@ -160,6 +171,10 @@
 
 #define		SD_GPIO_CLOCK_ENABLE()	__HAL_RCC_GPIOA_CLK_ENABLE();
 
+
+/* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+ *													   LCD Configuration
+ */
 /* LCD SPI GPIO Config -------------------------
  */
 /* LCD SPI MOSI pin */
@@ -195,6 +210,17 @@
 #define		LCD_SPI_RES_GPIO_PORT	GPIOA
 #define		LCD_SPI_RES_PIN			GPIO_PIN_4
 
+/* -------------------------------------------------
+ * LCD SPI DMA Module Config
+ */
+#define		LCD_SPI_TX_DMA_HANDLE	qdma2_tx_spi2
+#define		LCD_SPI_TX_DMA_STREAM	DMA2_Stream2
+#define		LCD_SPI_TX_DMA_CHANNEL	DMA_CHANNEL_2
+
+#define 	LCD_SPI_TX_DMA_CH_IRQN			DMA2_Stream2_IRQn
+#define		LCD_SPI_TX_DMA_IRQ_HANDLER		DMA2_Stream2_IRQHandler
+
+#define		LCD_SPI_DMA_CLOCK_ENABLE()		__HAL_RCC_DMA2_CLK_ENABLE()
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														Digital Channels
@@ -243,6 +269,9 @@ class qcPeripheral
 		/* LCD handle objects */
 		SPI_HandleTypeDef	LCD_SPI_HANDLE;
 		TIM_HandleTypeDef   htim2;
+		DMA_HandleTypeDef	LCD_SPI_TX_DMA_HANDLE;
+
+		bool				SPI_TxDMA_TC_Flag;
 
 		/* SD card handle objects */
 		SPI_HandleTypeDef	SD_SPI_HANDLE;

@@ -17,6 +17,7 @@
 #include	"digitalChannels.h"
 #include	"SD_Card.h"
 #include	"CS43L22.h"
+#include	"GUI.h"
 
 #include	"ff.h"
 #include	"ff_gen_drv.h"
@@ -96,7 +97,8 @@ typedef struct
 }	qsFatFS_t;
 
 
-class qc_uPlayer : public qcSD_Card, public qcCS43L22, public qcDigitalChannels, public qcAnalogChannels
+class qc_uPlayer :	public qc_GUI, public qcSD_Card, public qcCS43L22,
+					public qcDigitalChannels, public qcAnalogChannels
 {
 	public :
 

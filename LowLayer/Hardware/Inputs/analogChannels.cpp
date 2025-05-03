@@ -91,19 +91,9 @@ void qcAnalogChannels::ADC_Init (void)
 void qcAnalogChannels::ReadBatteryLevel (void)
 {
 	ui32 averageValue = 0;
-	char s[40];
 
 	for (ui8 i = 0; i < ANALOG_VALUES_AVERAGE; i++)
 		averageValue += analogValues[i];
 
 	batteryLevel = averageValue / ANALOG_VALUES_AVERAGE;
-
-	sprintf(s,"%d",batteryLevel);
-
-	char aaa [] = "ст№ёЁ#";
-	char printBuf [qcfgPRINT_BUF_SIZE];
-
-	Translation(aaa, printBuf, qcfgPRINT_BUF_SIZE);
-
-	ST7789_WriteString_Test(3, 55, printBuf, &Font4, WHITE, BLACK);
 }

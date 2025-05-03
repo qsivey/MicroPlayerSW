@@ -115,6 +115,8 @@ typedef enum
 #define		countof_(arr)			(sizeof(arr) / sizeof(*(arr)))
 #define		offsetof_(pEnd, pStart)	(((ui8*)(pEnd)) - ((ui8*)(pStart)))
 #define		clearbuff_(p)			(memset(p, 0, sizeof(*(p))))
+#define		min_(val, max)			((val) > (max) ? (max) : (val))
+#define		max_(val, min)			((val) < (min) ? (min) : (val))
 #define		constrain_(val, min, max)\
 									((val) < (min) ? (min) : (val) > (max) ? (max) : (val))
 #define		rawconstrain_(val, min, max, raw)\

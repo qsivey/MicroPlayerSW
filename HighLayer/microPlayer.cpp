@@ -258,7 +258,7 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
 
-	init_board();
+	ST7789_Init();
 
 	/* Mount file system */
 	extern Diskio_drvTypeDef SD_Driver [];
@@ -500,11 +500,13 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 
 uPlayerStatus_t	qc_uPlayer::VolumeUp (void)
 {
-	volume += qcfgVOLUME_PITCH;
+	if (volume < qcfgMAX_VOLUME)
+		{	volume++;
+			DAC_SetVolume(volume);
+		}
+	else volume = 16;
 
-	volume = constrain_(volume, qcfgMIN_VOLUME, qcfgMAX_VOLUME);
-
-	DAC_SetVolume(volume);
+	ShowVolumeBar(volume);
 
 	return uPL_OK;
 }
@@ -512,13 +514,16 @@ uPlayerStatus_t	qc_uPlayer::VolumeUp (void)
 
 uPlayerStatus_t qc_uPlayer::VolumeDown (void)
 {
-	if (qcfgMIN_VOLUME + qcfgVOLUME_PITCH > volume)
-		volume = qcfgMIN_VOLUME;
+	if (volume > qcfgMIN_VOLUME)
+	{
+		volume--;
+		DAC_SetVolume(volume);
 
-	else
-		volume -= qcfgVOLUME_PITCH;
+	}
+	else volume = 0;
 
-	DAC_SetVolume(volume);
+
+	ShowVolumeBar(volume);
 
 	return uPL_OK;
 }
@@ -611,12 +616,18 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Task (void)
 
 	ui32 BatteryLevelTime = 0;
 
+	ShowBottomPanel();
+	extern uint16_t saber[];
+	ST7789_DrawImage(0, 0, 128, 128, saber);
 	while (1)
 	{
 		if (state == uPL_PLAY)
 			Play();
 
 		ButtonsHandle();
+
+		if (qmGetTick() - volumeBarTick > qcfgVOLUME_BAR_TIMER && flagVolBar)
+			HideVolumeBar();
 
 		if ((qmGetTick() - BatteryLevelTime) > 2000)
 		{

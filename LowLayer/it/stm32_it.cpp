@@ -128,3 +128,15 @@ void ADC_DMA_IRQ_HANDLER (void)
 {
 	HAL_DMA_IRQHandler(&uPlayer.ADC_DMA_HANDLE);
 }
+
+
+void LCD_SPI_TX_DMA_IRQ_HANDLER (void)
+{
+	HAL_DMA_IRQHandler(&uPlayer.LCD_SPI_TX_DMA_HANDLE);
+}
+
+
+void HAL_SPI_TxCpltCallback (SPI_HandleTypeDef *hspi)
+{
+	uPlayer.SPI_TxDMA_TC_Flag = true;
+}
