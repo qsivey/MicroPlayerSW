@@ -13,15 +13,16 @@
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 
+
 #include	"analogChannels.h"
 #include	"digitalChannels.h"
-#include	"SD_Card.h"
-#include	"CS43L22.h"
+#include	"PCM5142.h"
 #include	"GUI.h"
 
 #include	"ff.h"
 #include	"ff_gen_drv.h"
 
+#include	"tjpgd.h"
 #include	"printf.h"
 
 #define		qmCall(method)			(this->*method)()
@@ -97,12 +98,14 @@ typedef struct
 }	qsFatFS_t;
 
 
-class qc_uPlayer :	public qc_GUI, public qcSD_Card, public qcCS43L22,
+class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 					public qcDigitalChannels, public qcAnalogChannels
 {
 	public :
 
 		/* Low layer objects */
+		ui32				cycle;
+
 		uPlayerEvent_t		event;
 		ui32				backlightTimer;
 
@@ -168,7 +171,7 @@ class qc_uPlayer :	public qc_GUI, public qcSD_Card, public qcCS43L22,
 		uPlayerStatus_t		Pause (void);
 		uPlayerStatus_t		Play (void);
 
-		uPlayerStatus_t		Task (void);
+		uPlayerStatus_t		Start (void);
 
 };
 

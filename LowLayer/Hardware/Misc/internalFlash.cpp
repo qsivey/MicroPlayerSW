@@ -11,15 +11,12 @@
 #include "internalFlash.h"
 
 
-InternalFlashHandle InternalFlash(	HW_FLASH_VOLTAGE_RANGE);
-
-
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														   Class Methods
  */
 void InternalFlashHandle::SaveData (ui32 address, ui32 data)
 {
-	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, (ui64)data);
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_QUADWORD, address, (ui64)data);
 	qmDelayMs(50);  // todo reduce
 }
 
@@ -33,17 +30,16 @@ ui32 InternalFlashHandle::ReadWord (ui32 address)
 
 void InternalFlashHandle::EraseSector (ui32 sector, ui8 sectorsNumber)
 {
-	 FLASH_EraseInitTypeDef EraseInit = {0};
+	FLASH_EraseInitTypeDef EraseInit = {0};
 
 	HAL_FLASH_Unlock();
 	qmDelayMs(1);
 
-	__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR);
+	__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_WRPERR | FLASH_FLAG_PGSERR);
 
 	EraseInit.TypeErase    = FLASH_TYPEERASE_SECTORS;
 	EraseInit.Sector       = sector;
 	EraseInit.NbSectors    = sectorsNumber;
-	EraseInit.VoltageRange = voltageRange;
 
 	HAL_FLASHEx_Erase(&EraseInit, &sectorError);
 

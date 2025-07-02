@@ -26,17 +26,14 @@
 
 #define		qcfgHAL_TIMEOUT_DELAY	100				// Units: ms
 
-#define		qcfgCS43L22_I2C_ADDR	0x94
-
 #define		DR_FLAC_IMPLEMENTATION
-//#define		DR_MP3_IMPLEMENTATION
+#define		DR_MP3_IMPLEMENTATION
 #define		DR_WAV_IMPLEMENTATION
-
 
 /* -------------------------------------------------
  * High Layer Configs
  */
-#define		qcfgPCM_BUFFER_SIZE		8192			// Units: bytes * type. 1024 --> 16382 (i16 : x2, i32: x4). 65535 Max
+#define		qcfgPCM_BUFFER_SIZE		(1024 * 16)		// Units: bytes * size. 1024 --> 32768
 
 #define		qcfgVOLUME_BAR_TIMER	2000			// Units: ms
 
@@ -46,7 +43,7 @@
 
 #define		qcfgMAX_VOLUME			16				// 1 --> 16
 #define		qcfgMIN_VOLUME			0				// 0 --> 15
-#define		qcfgINITIAL_VOLUME		10				// 0 --> 16
+#define		qcfgINITIAL_VOLUME		12				// 0 --> 16
 
 
 /* = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */

@@ -2588,7 +2588,6 @@ static drmp3_allocation_callbacks drmp3_copy_allocation_callbacks_or_defaults(co
 }
 
 
-
 static size_t drmp3__on_read(drmp3* pMP3, void* pBufferOut, size_t bytesToRead)
 {
     size_t bytesRead = pMP3->onRead(pMP3->pUserData, pBufferOut, bytesToRead);
@@ -2786,6 +2785,7 @@ static drmp3_uint32 drmp3_decode_next_frame_ex__memory(drmp3* pMP3, drmp3d_sampl
         } else if (info.frame_bytes > 0) {
             /* No frames were read, but it looks like we skipped past one. Read the next MP3 frame. */
             pMP3->memory.currentReadPos += (size_t)info.frame_bytes;
+            pMP3->streamCursor          += (size_t)info.frame_bytes;
         } else {
             /* Nothing at all was read. Abort. */
             break;
@@ -2794,6 +2794,7 @@ static drmp3_uint32 drmp3_decode_next_frame_ex__memory(drmp3* pMP3, drmp3d_sampl
 
     /* Consume the data. */
     pMP3->memory.currentReadPos += (size_t)info.frame_bytes;
+    pMP3->streamCursor          += (size_t)info.frame_bytes;
 
     return pcmFramesRead;
 }
@@ -3515,7 +3516,7 @@ static size_t drmp3__on_read_stdio(void *pUserData, void* pBufferOut, size_t byt
 {
 	FIL *pFileStdio = (FIL*)pUserData;
 
-	UINT bytes_read;
+	size_t bytes_read;
 
 	f_read(pFileStdio, pBufferOut, bytesToRead, &bytes_read);
 

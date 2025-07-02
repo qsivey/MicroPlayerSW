@@ -82,8 +82,6 @@ extern SD_disk_ioctl_wrapper_t SD_disk_ioctl_wrapper;
 
 /* Private variables ---------------------------------------------------------*/
 /* Disk status */
-static volatile DSTATUS Stat = STA_NOINIT;
-
 /* USER CODE END DECL */
 
 /* Private function prototypes -----------------------------------------------*/

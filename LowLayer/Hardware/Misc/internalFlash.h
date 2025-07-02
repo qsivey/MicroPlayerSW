@@ -16,7 +16,7 @@
 #include	"periph.h"
 
 /* Can be referenced from stm32f7xx_hal_flash_ex.h */
-#define		HW_FLASH_VOLTAGE_RANGE	FLASH_VOLTAGE_RANGE_3
+//#define		HW_FLASH_VOLTAGE_RANGE	FLASH_VOLTAGE_RANGE_3
 
 
 class InternalFlashHandle
@@ -42,8 +42,6 @@ class InternalFlashHandle
 
 };
 
-
-extern InternalFlashHandle InternalFlash;
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 

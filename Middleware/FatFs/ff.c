@@ -3015,6 +3015,38 @@ BYTE check_fs (	/* 0:FAT, 1:exFAT, 2:Valid BS but not FAT, 3:Not a BS, 4:Disk er
 	fs->wflag = 0; fs->winsect = 0xFFFFFFFF;		/* Invaidate window */
 	if (move_window(fs, sect) != FR_OK) return 4;	/* Load boot record */
 
+	if (!mem_cmp(fs->win + BS_JmpBoot, "EFI PART", 8))
+	{
+		int findFlag = 0;
+
+		/* Seek for a FAT info sector */
+		for (int i = 0; i < 4096; i++)
+		{
+			move_window(fs, i);
+
+			for (int k = 0; k < 512; k++)
+			{
+				/* Skip empty sectors */
+				if (fs->win[k] != 0)
+				{
+					for (int j = 0; j < 510; j++)
+					{
+						if (!mem_cmp(&fs->win[j], "FAT", 3))
+						/* We found needed sector */
+						{
+							findFlag = 1;
+							break;
+						}
+					}
+				}
+
+				if (findFlag) break;
+			}
+
+			if (findFlag) break;
+		}
+	}
+
 	if (ld_word(fs->win + BS_55AA) != 0xAA55) return 3;	/* Check boot record signature (always placed here even if the sector size is >512) */
 
 	if (fs->win[BS_JmpBoot] == 0xE9 || (fs->win[BS_JmpBoot] == 0xEB && fs->win[BS_JmpBoot + 2] == 0x90)) {
@@ -3900,7 +3932,7 @@ FRESULT f_chdrive (
 #endif
 
 
-#include "stm32f4xx_hal.h"
+#include "stm32h5xx_hal.h"
 
 FRESULT f_chdir (
 	const TCHAR* path	/* Pointer to the directory path */

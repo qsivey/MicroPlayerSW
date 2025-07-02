@@ -22,9 +22,11 @@ extern 		"C" {
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *												  Initial Project Config
  */
-#define		PROJ_USE_FREERTOS		setOFF
+#define		qcfgPROJ_MCU_FREQUENCY	250000000
 
-#if (PROJ_USE_FREERTOS == setOFF)
+#define		qcfgPROJ_USE_FREERTOS	setOFF
+
+#if (qcfgPROJ_USE_FREERTOS == setOFF)
 	#define	qmGetTick()				HAL_GetTick()
 	#define	qmDelayMs(ms)			HAL_Delay(ms)
 
@@ -39,12 +41,12 @@ extern 		"C" {
 /* -------------------------------------------------
  * MCU depended libraries
  */
-#include	"stm32f4xx_hal.h"
+#include	"stm32h5xx_hal.h"
 
 /* -------------------------------------------------
  * OS depended libraries
  */
-#if (PROJ_USE_FREERTOS)
+#if (qcfgPROJ_USE_FREERTOS)
 	/* OS includes */
 	#include "FreeRTOS.h"
 	#include "task.h"

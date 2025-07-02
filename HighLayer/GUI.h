@@ -13,7 +13,8 @@
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 
-#include    "st7789.h"
+
+#include    "ST7789.h"
 
 /* Base GUI parameters */
 #define 	GUI_DISPLAY_WIDTH		240

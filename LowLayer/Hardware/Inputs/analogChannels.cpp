@@ -13,40 +13,11 @@
 #include "analogChannels.h"
 
 
-#include "st7789.h"
-#include "font_test.h"
-
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														   Class Methods
  */
 void qcAnalogChannels::ADC_Init (void)
 {
-	ADC_DMA_CLOCK_ENABLE();
-
-	ADC_DMA_HANDLE.Instance = ADC_DMA_STREAM;
-
-	ADC_DMA_HANDLE.Init.Channel					= ADC_DMA_CHANNEL;
-	ADC_DMA_HANDLE.Init.FIFOMode				= DMA_FIFOMODE_DISABLE;
-	ADC_DMA_HANDLE.Init.FIFOThreshold			= DMA_FIFO_THRESHOLD_HALFFULL;
-	ADC_DMA_HANDLE.Init.MemBurst				= DMA_MBURST_SINGLE;
-	ADC_DMA_HANDLE.Init.PeriphBurst				= DMA_PBURST_SINGLE;
-	ADC_DMA_HANDLE.Init.Direction				= DMA_PERIPH_TO_MEMORY;
-	ADC_DMA_HANDLE.Init.PeriphInc				= DMA_PINC_DISABLE;
-	ADC_DMA_HANDLE.Init.MemInc					= DMA_MINC_ENABLE;
-	ADC_DMA_HANDLE.Init.PeriphDataAlignment		= DMA_PDATAALIGN_HALFWORD;
-	ADC_DMA_HANDLE.Init.MemDataAlignment		= DMA_MDATAALIGN_HALFWORD;
-	ADC_DMA_HANDLE.Init.Mode					= DMA_CIRCULAR;
-	ADC_DMA_HANDLE.Init.Priority				= DMA_PRIORITY_HIGH;
-
-	if (HAL_DMA_Init(&ADC_DMA_HANDLE) != HAL_OK)
-		HardwareErrorHandler();
-
-	/* Associate the initialized DMA handle to the ADC handle */
-	__HAL_LINKDMA(&ADC_HANDLE, DMA_Handle, ADC_DMA_HANDLE);
-
-	HAL_NVIC_SetPriority(ADC_DMA_CH_IRQN, 0, 0);
-	HAL_NVIC_EnableIRQ(ADC_DMA_CH_IRQN);
-
 	ADC_CLOCK_ENABLE();
 
 	ADC_HANDLE.Instance = ADC_INSTANCE;
@@ -69,7 +40,7 @@ void qcAnalogChannels::ADC_Init (void)
 
 	ADC_ChannelConfTypeDef sConfig = { 0 };
 
-	sConfig.SamplingTime	= ADC_SAMPLETIME_144CYCLES;
+	sConfig.SamplingTime	= ADC_SAMPLETIME_92CYCLES_5;
 	sConfig.Channel			= BAT_LEVEL_ADC_CHANNEL;
 	sConfig.Rank			= 1;
 

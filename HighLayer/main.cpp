@@ -2,15 +2,16 @@
  *
  * 	MicroPlayer project
  *
- *	GitHub:		qsivey
- *	Telegram:	@qsivey
- *	Email:		qsivey@gmail.com
+ *	GitHub:		qsivey, Nik125Y
+ *	Telegram:	@qsivey, @Nik125Y
+ *	Email:		qsivey@gmail.com, topnikm@gmail.com
  *	____________________________________________________________________
  */
 
 #include	"microPlayer.h"
 
+
 int main(void)
 {
-	uPlayer.Task();
+	uPlayer.Start();
 }

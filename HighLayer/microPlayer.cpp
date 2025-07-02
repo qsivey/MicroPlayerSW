@@ -10,8 +10,6 @@
 
 #include 	"microPlayer.h"
 
-#include	"helix_mp3.h"
-
 #include	"dr_mp3.h"
 #include	"dr_flac.h"
 #include	"dr_wav.h"
@@ -33,21 +31,14 @@ qc_uPlayer uPlayer;
  */
 uPlayerStatus_t qc_uPlayer::OpenMP3 (void)
 {
-	#if !defined DR_MP3_IMPLEMENTATION
+	track = qmCreate(drmp3);
 
-		track = qmCreate(helix_mp3_t);
+	drmp3_init_file((drmp3*)track, trackPath, NULL);
 
-		helix_mp3_init_file((helix_mp3_t*)track, trackPath);
+	PCM5142_SetSampleRate(((drmp3*)track)->sampleRate);
+	PCM5142_SetBitRate(16);
 
-		DAC_SetSampleRate(helix_mp3_get_sample_rate((helix_mp3_t*)track));
-
-	#else
-		drmp3_init_file(track, trackPath, NULL);
-
-		DAC_SetSampleRate(track.sampleRate)
-	#endif
-
-	PCM_Buffer = qmCreateArr(i16, qcfgPCM_BUFFER_SIZE * 2);
+	PCM_Buffer = qmCreateArr(i16, qcfgPCM_BUFFER_SIZE * sizeof(i16));
 
 	bufferOffset = BUFFER_OFFSET_FULL;
 
@@ -59,18 +50,19 @@ uPlayerStatus_t qc_uPlayer::OpenFLAC (void)
 {
 	track = drflac_open_file(trackPath, NULL);
 
-	DAC_SetSampleRate(((drflac*)track)->sampleRate);
+	PCM5142_SetSampleRate(((drflac*)track)->sampleRate);
+	PCM5142_SetBitRate(((drflac*)track)->bitsPerSample);
 
 	if (((drflac*)track)->bitsPerSample <= 16)
 	{
 		ReadFrames = &qc_uPlayer::ReadFLAC_16;
-		PCM_Buffer = qmCreateArr(drflac_int16, qcfgPCM_BUFFER_SIZE * 2);
+		PCM_Buffer = qmCreateArr(drflac_int16, qcfgPCM_BUFFER_SIZE * sizeof(drflac_int16));
 	}
 
 	else
 	{
 		ReadFrames = &qc_uPlayer::ReadFLAC_32;
-		PCM_Buffer = qmCreateArr(drflac_int32, qcfgPCM_BUFFER_SIZE * 4);
+		PCM_Buffer = qmCreateArr(drflac_int32, qcfgPCM_BUFFER_SIZE * sizeof(drflac_int32));
 	}
 
 	bufferOffset = BUFFER_OFFSET_FULL;
@@ -85,18 +77,19 @@ uPlayerStatus_t qc_uPlayer::OpenWAV (void)
 
 	drwav_init_file((drwav*)track, trackPath, NULL);
 
-	DAC_SetSampleRate(((drwav*)track)->sampleRate);
+	PCM5142_SetSampleRate(((drwav*)track)->sampleRate);
+	PCM5142_SetBitRate(((drwav*)track)->bitsPerSample);
 
 	if (((drwav*)track)->bitsPerSample <= 16)
 	{
 		ReadFrames = &qc_uPlayer::ReadWAV_16;
-		PCM_Buffer = qmCreateArr(drwav_int16, qcfgPCM_BUFFER_SIZE * 2);
+		PCM_Buffer = qmCreateArr(drwav_int16, qcfgPCM_BUFFER_SIZE * sizeof(drwav_int16));
 	}
 
 	else
 	{
 		ReadFrames = &qc_uPlayer::ReadWAV_32;
-		PCM_Buffer = qmCreateArr(drwav_int32, qcfgPCM_BUFFER_SIZE * 4);
+		PCM_Buffer = qmCreateArr(drwav_int32, qcfgPCM_BUFFER_SIZE * sizeof(drwav_int32));
 	}
 
 	bufferOffset = BUFFER_OFFSET_FULL;
@@ -107,18 +100,12 @@ uPlayerStatus_t qc_uPlayer::OpenWAV (void)
 
 uPlayerStatus_t qc_uPlayer::ReadMP3 (void)
 {
-	#if !defined DR_MP3_IMPLEMENTATION
+	if (bufferOffset == BUFFER_OFFSET_FULL)
+		framesRead = drmp3_read_pcm_frames_s16((drmp3*)track, qcfgPCM_BUFFER_SIZE / 4, (drmp3_int16*)PCM_Buffer);
 
-		if (bufferOffset == BUFFER_OFFSET_FULL)
-			framesRead = helix_mp3_read_pcm_frames_s16((helix_mp3_t*)track, (i16*)PCM_Buffer, qcfgPCM_BUFFER_SIZE / 4);
-
-		else if (bufferOffset == BUFFER_OFFSET_HALF)
-			framesRead = helix_mp3_read_pcm_frames_s16((helix_mp3_t*)track,
-					(i16*)(((i16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)), qcfgPCM_BUFFER_SIZE / 4);
-
-	#else
-		size_t bytesRead = drmp3_read_pcm_frames_s16(track, qcfgPCM_BUFFER_SIZE / 2, PCM_Buffer);
-	#endif
+	else if (bufferOffset == BUFFER_OFFSET_HALF)
+		framesRead = drmp3_read_pcm_frames_s16((drmp3*)track, qcfgPCM_BUFFER_SIZE / 4,
+				(drmp3_int16*)(((drmp3_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
 	assign_(bufferOffset, BUFFER_OFFSET_NONE);
 
@@ -144,10 +131,10 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_16 (void)
 uPlayerStatus_t qc_uPlayer::ReadFLAC_32 (void)
 {
 	if (bufferOffset == BUFFER_OFFSET_FULL)
-		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 2, (drflac_int32*)PCM_Buffer);
+		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4, (drflac_int32*)PCM_Buffer);
 
 	else if (bufferOffset == BUFFER_OFFSET_HALF)
-		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 2,
+		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4,
 				(drflac_int32*)(((drflac_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
 	assign_(bufferOffset, BUFFER_OFFSET_NONE);
@@ -173,21 +160,14 @@ uPlayerStatus_t qc_uPlayer::ReadWAV_16 (void)
 
 uPlayerStatus_t qc_uPlayer::ReadWAV_32 (void)
 {
-	// todo check
 	if (bufferOffset == BUFFER_OFFSET_FULL)
-	{
 		framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4, (drwav_int32*)PCM_Buffer);
 
-		bufferOffset = BUFFER_OFFSET_HALF;
-	}
-
-	else
-	{
+	else if (bufferOffset == BUFFER_OFFSET_HALF)
 		framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4,
 				(drwav_int32*)(((drwav_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
-		bufferOffset = BUFFER_OFFSET_FULL;
-	}
+	assign_(bufferOffset, BUFFER_OFFSET_NONE);
 
 	return uPL_OK;
 }
@@ -195,11 +175,7 @@ uPlayerStatus_t qc_uPlayer::ReadWAV_32 (void)
 
 uPlayerStatus_t qc_uPlayer::CloseMP3 (void)
 {
-	#if !defined DR_MP3_IMPLEMENTATION
-		helix_mp3_deinit((helix_mp3_t*)track);
-	#else
-		drmp3_uninit(&mp3);
-	#endif
+	drmp3_uninit((drmp3*)track);
 
 	qmDestroy(PCM_Buffer);
 	qmDestroy(track);
@@ -240,36 +216,25 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	/* Enable all GPIOs */
 	AllGPIO_ClockEnable();
 
+	/* Display Init */
+	ST7789_Init();
+
 	/* Analog channels init */
-	ADC_Init();
+//	ADC_Init();
 
 	/* All buttons init */
 	ButtonsInit();
 
-	/* Display init */
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-	GPIO_InitStruct.Pin			= GPIO_PIN_10;
-	GPIO_InitStruct.Mode		= GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull		= GPIO_NOPULL;
-	GPIO_InitStruct.Speed		= GPIO_SPEED_FREQ_HIGH;
-
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
-
-	ST7789_Init();
-
 	/* Mount file system */
-	extern Diskio_drvTypeDef SD_Driver [];
+	extern Diskio_drvTypeDef SDMMC_Driver;
 
-	FATFS_LinkDriver(SD_Driver, fatFS.SD_Path);
+	FATFS_LinkDriver(&SDMMC_Driver, fatFS.SD_Path);
 
 	if (f_mount(&fatFS.fs, (TCHAR const*)fatFS.SD_Path, 0) != FR_OK)
 		return uPL_ERROR;
 
-	/* CS43L22 init */
-	DAC_Init();
+	/* PCM5142 init */
+	PCM5142_Init();
 
 	/* Service variable init */
 	currentCodec = uPLFC_NONE;
@@ -354,20 +319,32 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 		((qsbCurTrNameEndOfs(3) == 'M') && (qsbCurTrNameEndOfs(2) == 'P') && (qsbCurTrNameEndOfs(1) == '3')))
 		fileCodec = uPLFC_MP3;
 
+	/* .flac */
 	else if (((qsbCurTrNameEndOfs(4) == 'f') && (qsbCurTrNameEndOfs(3) == 'l') && (qsbCurTrNameEndOfs(2) == 'a') && (qsbCurTrNameEndOfs(1) == 'c')) ||
 		((qsbCurTrNameEndOfs(4) == 'F') && (qsbCurTrNameEndOfs(3) == 'L') && (qsbCurTrNameEndOfs(2) == 'A') && (qsbCurTrNameEndOfs(1) == 'C')))
 		fileCodec = uPLFC_FLAC;
 
+	/* .ogg */
 	else if (((qsbCurTrNameEndOfs(3) == 'o') && (qsbCurTrNameEndOfs(2) == 'g') && (qsbCurTrNameEndOfs(1) == 'g')) ||
 		((qsbCurTrNameEndOfs(3) == 'O') && (qsbCurTrNameEndOfs(2) == 'G') && (qsbCurTrNameEndOfs(1) == 'G')))
 		fileCodec = uPLFC_OGG;
 
+	/* .wav */
 	else if (((qsbCurTrNameEndOfs(3) == 'w') && (qsbCurTrNameEndOfs(2) == 'a') && (qsbCurTrNameEndOfs(1) == 'v')) ||
 		((qsbCurTrNameEndOfs(3) == 'W') && (qsbCurTrNameEndOfs(2) == 'A') && (qsbCurTrNameEndOfs(1) == 'V')))
 		fileCodec = uPLFC_WAV;
 
+	/* .wv todo??? */
+	else if (((qsbCurTrNameEndOfs(2) == 'w') && (qsbCurTrNameEndOfs(1) == 'v')) ||
+		((qsbCurTrNameEndOfs(2) == 'W') && (qsbCurTrNameEndOfs(1) == 'V')))
+		fileCodec = uPLFC_WAV;
+
 	else
+	{
+		SetEvent(uPL_EVENT_TRACK_NEXT);
+		status = uPL_ERROR;
 		return uPL_ERROR;  // Not supported format
+	}
 
 	if (currentCodec != fileCodec)
 	{
@@ -406,10 +383,13 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 	bufferOffset = BUFFER_OFFSET_HALF;
 
 	/* Unmute */
-	DAC_SetMute(CS43L22_AUDIO_MUTE_OFF);
+	PCM5142_Unmute();
 
 	/* Start DMA */
 	HAL_I2S_Transmit_DMA(&DAC_I2S_HANDLE, (ui16*)PCM_Buffer, qcfgPCM_BUFFER_SIZE);
+
+	state = uPL_PLAY;
+	status = uPL_OK;
 
 	return uPL_OK;
 }
@@ -418,10 +398,10 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 uPlayerStatus_t qc_uPlayer::DeinitCodec (void)
 {
 	/* Mute */
-	DAC_SetMute(CS43L22_AUDIO_MUTE_ON);
+	PCM5142_Mute();
 	qmDelayMs(20);
 
-	/* Stoop DMA */
+	/* Stop DMA */
 	HAL_I2S_DMAStop(&DAC_I2S_HANDLE);
 
 	/* Close current track */
@@ -436,7 +416,6 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 	if (event == uPL_EVENT_NONE)
 		return uPL_OK;
 
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
 	backlightTimer = qmGetTick();
 
 	switch (event)
@@ -463,16 +442,11 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 
 		case uPL_EVENT_TRACK_PAUSE_PLAY :
 			if (state == uPL_STOP)
-			{
 				InitCodec();
-
-				state = uPL_PLAY;
-			}
 
 			else if (state == uPL_PAUSE)
 			{
-				DAC_SetMute(CS43L22_AUDIO_MUTE_OFF);
-				DAC_Write(CS43L22_REG_POWER_CTL1, 0x9E);
+				PCM5142_Unmute();
 
 				HAL_I2S_DMAResume(&DAC_I2S_HANDLE);
 
@@ -501,12 +475,26 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 uPlayerStatus_t	qc_uPlayer::VolumeUp (void)
 {
 	if (volume < qcfgMAX_VOLUME)
-		{	volume++;
-			DAC_SetVolume(volume);
-		}
-	else volume = 16;
+	{
+		volume++;
+		PCM5142_SetVolume(volume);
+	}
 
-	ShowVolumeBar(volume);
+	else
+	{
+		if (amplitudeBoost == false)
+		{
+			PCM5142_Write(0, 1);
+			PCM5142_Write(7, 0x11);  // Boost amplitude
+			PCM5142_Write(0, 0);
+
+			amplitudeBoost = true;
+		}
+
+		volume = qcfgMAX_VOLUME;
+	}
+
+//	ShowVolumeBar(volume);
 
 	return uPL_OK;
 }
@@ -516,14 +504,23 @@ uPlayerStatus_t qc_uPlayer::VolumeDown (void)
 {
 	if (volume > qcfgMIN_VOLUME)
 	{
+		if (amplitudeBoost)
+		{
+			PCM5142_Write(0, 1);
+			PCM5142_Write(7, 0);  // Boost amplitude off
+			PCM5142_Write(0, 0);
+
+			amplitudeBoost = false;
+		}
+
 		volume--;
-		DAC_SetVolume(volume);
-
+		PCM5142_SetVolume(volume);
 	}
-	else volume = 0;
 
+	else
+		volume = qcfgMIN_VOLUME;
 
-	ShowVolumeBar(volume);
+//	ShowVolumeBar(volume);
 
 	return uPL_OK;
 }
@@ -547,7 +544,8 @@ uPlayerStatus_t qc_uPlayer::Back (void)
 
 uPlayerStatus_t qc_uPlayer::Next (void)
 {
-	DeinitCodec();
+	if (status != uPL_ERROR)
+		DeinitCodec();
 
 	if ((playMode & uPL_MODE_REPEAT_TRACK) && (!GetEvent(uPL_EVENT_TRACK_NEXT)))
 	/* Track is over in one track repeat mode */
@@ -585,8 +583,7 @@ uPlayerStatus_t qc_uPlayer::Stop (void)
 
 uPlayerStatus_t qc_uPlayer::Pause (void)
 {
-	DAC_SetMute(CS43L22_AUDIO_MUTE_ON);
-	DAC_Write(CS43L22_REG_POWER_CTL1, 0x01);
+	PCM5142_Mute();
 	qmDelayMs(20);
 
 	HAL_I2S_DMAPause(&uPlayer.DAC_I2S_HANDLE);
@@ -597,8 +594,12 @@ uPlayerStatus_t qc_uPlayer::Pause (void)
 
 uPlayerStatus_t qc_uPlayer::Play (void)
 {
+	ui32 cycleTemp = qmGetTick();
+
 	/* Decode next frame */
 	qmCall(ReadFrames);
+
+	cycle = qmGetTick() - cycleTemp;
 
 	if (!framesRead)
 		Next();
@@ -607,37 +608,118 @@ uPlayerStatus_t qc_uPlayer::Play (void)
 }
 
 
-NORETURN__ uPlayerStatus_t qc_uPlayer::Task (void)
+typedef struct
+{
+	FIL* file;
+	uint32_t remaining;
+
+}	jpeg_source_t;
+
+
+UINT tjd_input(JDEC* jd, uint8_t* buf, UINT len)
+{
+    jpeg_source_t* src = (jpeg_source_t*)jd->device;
+    UINT br;
+    if (len > src->remaining) len = src->remaining;
+
+    if (!buf)
+    {
+     buf = qmCreateArr(ui8, len);
+     f_read(src->file, buf, len, &br);
+     qmFree(buf);
+
+     return len;
+    }
+
+    if (f_read(src->file, buf, len, &br) != FR_OK)
+     return 0;
+
+    src->remaining -= br;
+    return br;
+}
+
+
+static ui16 imageBuf [ST7789_WIDTH * ST7789_HEIGHT];
+ui32 imageBufPointer = 0;
+
+
+INT tjd_output (JDEC *jd, void *bitmap, JRECT *rect)
+{
+    uint16_t* buf = (uint16_t*)bitmap;
+
+    for (ui16 i = 0; i < (rect->right - rect->left + 1) * (rect->bottom - rect->top + 1); i++)
+    {
+    	buf[i] = __REV16(buf[i]);
+    }
+
+    if ((rect->left >= ST7789_WIDTH) || (rect->right >= ST7789_WIDTH))
+		return -1;  // continue
+
+    if ((rect->top) >= ST7789_HEIGHT || (rect->bottom >= ST7789_HEIGHT))
+    	return 0;  // break
+
+    for (ui16 i = 0; i <= (rect->bottom - rect->top); i++)
+    	memcpy(&imageBuf[((i + rect->top) * ST7789_HEIGHT) + rect->left], &buf[i * ((rect->right - rect->left) + 1)], ((rect->right - rect->left) + 1) * 2);
+
+    return -1;
+}
+
+
+NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 {
 	Init();
 	// todo parse .playlist file
 
-	InitFolder("/flac");
+	FIL JPEG_File;
 
-	ui32 BatteryLevelTime = 0;
+	f_open(&JPEG_File, "1.jpg", FA_READ);
 
-	ShowBottomPanel();
-	extern uint16_t saber[];
-	ST7789_DrawImage(0, 0, 128, 128, saber);
+	jpeg_source_t jpegSrc =
+	{
+		.file = &JPEG_File,
+		.remaining = 10000000
+	};
+
+	JDEC jd; uint8_t work [1024 * 64];
+
+	ui32 time = qmGetTick();
+
+	if (jd_prepare(&jd, tjd_input, work, sizeof(work), &jpegSrc) == JDR_OK)
+		jd_decomp(&jd, tjd_output, 1);  // 1 - 1/2, 2 - 1/4, 3 - 1/8
+
+
+	ui32 difTime = qmGetTick() - time;
+
+	uPlayer.ST7789_DrawImage(0, 0, 240, 240, imageBuf);
+
+	char difTimeStr [20];
+
+	sprintf_(difTimeStr, "%d", difTime);
+
+//	ST7789_WriteString(2, 2, difTimeStr, &Font20, GREEN, BLACK);
+
+	while (1);
+
+
+//	InitFolder("/flac/Scaled and Icy");
+//	InitFolder("/flac/Trench");
+//	InitFolder("/flac/Blurryface");
+//	InitFolder("/flac/Home");
+	InitFolder("/flac/Bounce Into The Music");
+
+
+//	InitFolder("/wav");
+//	InitFolder("/mp3");
+//	InitFolder("/cmp");
+
+	SetEvent(uPL_EVENT_TRACK_PAUSE_PLAY);
+
 	while (1)
 	{
 		if (state == uPL_PLAY)
 			Play();
 
 		ButtonsHandle();
-
-		if (qmGetTick() - volumeBarTick > qcfgVOLUME_BAR_TIMER && flagVolBar)
-			HideVolumeBar();
-
-		if ((qmGetTick() - BatteryLevelTime) > 2000)
-		{
-			ReadBatteryLevel();
-			BatteryLevelTime = qmGetTick();
-		}
-
-		if ((qmGetTick() - backlightTimer) > qcfgBACKLIGHT_TIMER)
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
-
 		EventHandler();
 	}
 }
