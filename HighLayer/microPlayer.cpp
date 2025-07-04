@@ -665,6 +665,104 @@ INT tjd_output (JDEC *jd, void *bitmap, JRECT *rect)
 }
 
 
+
+#pragma pack(push, 1)
+
+typedef struct
+{
+    uint16_t bfType;      // 'BM'
+    uint32_t bfSize;
+    uint16_t bfReserved1;
+    uint16_t bfReserved2;
+    uint32_t bfOffBits;
+} BMPHeader;
+
+typedef struct
+{
+    uint32_t biSize;
+    int32_t  biWidth;
+    int32_t  biHeight;
+    uint16_t biPlanes;
+    uint16_t biBitCount;
+    uint32_t biCompression;
+    uint32_t biSizeImage;
+    int32_t  biXPelsPerMeter;
+    int32_t  biYPelsPerMeter;
+    uint32_t biClrUsed;
+    uint32_t biClrImportant;
+} BMPInfoHeader;
+
+#pragma pack(pop)
+
+
+FRESULT write_bmp_to_file(const char *filename, uint16_t *framebuffer, int width, int height)
+{
+    FIL file;
+    FRESULT res;
+    UINT written;
+
+    BMPHeader header;
+    BMPInfoHeader info;
+
+    uint32_t row_size = width * 2;  // RGB565: 2 bytes на пиксель
+    uint32_t image_size = row_size * height;
+    uint32_t file_size = sizeof(BMPHeader) + sizeof(BMPInfoHeader) + image_size;
+
+    // --- Заполнение заголовков ---
+    header.bfType = 0x4D42; // 'BM'
+    header.bfSize = file_size;
+    header.bfReserved1 = 0;
+    header.bfReserved2 = 0;
+    header.bfOffBits = sizeof(BMPHeader) + sizeof(BMPInfoHeader);
+
+    info.biSize = sizeof(BMPInfoHeader);
+    info.biWidth = width;
+    info.biHeight = -height; // Отрицательное значение: данные идут от верхней строки
+    info.biPlanes = 1;
+    info.biBitCount = 16;  // RGB565
+    info.biCompression = 3; // BI_BITFIELDS
+    info.biSizeImage = image_size;
+    info.biXPelsPerMeter = 0;
+    info.biYPelsPerMeter = 0;
+    info.biClrUsed = 0;
+    info.biClrImportant = 0;
+
+    // Цветовая маска для RGB565
+    const uint32_t masks[3] = { 0xF800, 0x07E0, 0x001F };
+
+    // --- Открытие файла ---
+    res = f_open(&file, filename, FA_CREATE_ALWAYS | FA_WRITE);
+    if (res != FR_OK) return res;
+
+    // --- Запись заголовков ---
+    f_write(&file, &header, sizeof(header), &written);
+    f_write(&file, &info, sizeof(info), &written);
+    f_write(&file, masks, sizeof(masks), &written);  // маски для RGB565
+
+    // --- Запись пикселей ---
+    for (int y = 0; y < height; y++)
+    {
+        uint16_t *row = &framebuffer[width * y];
+
+        for (ui16 i = 0; i < width; i++)
+		{
+        	row[i] = __REV16(row[i]);
+		}
+
+        f_write(&file, row, row_size, &written);
+    }
+
+    f_close(&file);
+    return FR_OK;
+}
+
+
+FRESULT make_file_hidden(const char *filename)
+{
+    return f_chmod(filename, AM_HID, AM_HID);
+}
+
+
 NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 {
 	Init();
@@ -695,6 +793,10 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 	char difTimeStr [20];
 
 	sprintf_(difTimeStr, "%d", difTime);
+
+	write_bmp_to_file("bufferImage.bmp", imageBuf, 240, 240);
+
+	make_file_hidden("bufferImage.bmp");
 
 //	ST7789_WriteString(2, 2, difTimeStr, &Font20, GREEN, BLACK);
 

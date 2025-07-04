@@ -326,9 +326,9 @@ int ff_del_syncobj (_SYNC_t sobj);				/* Delete a sync object */
 
 
 /* File access mode and open method flags (3rd argument of f_open) */
+#define	FA_OPEN_EXISTING	0x00
 #define	FA_READ				0x01
 #define	FA_WRITE			0x02
-#define	FA_OPEN_EXISTING	0x00
 #define	FA_CREATE_NEW		0x04
 #define	FA_CREATE_ALWAYS	0x08
 #define	FA_OPEN_ALWAYS		0x10

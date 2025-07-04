@@ -88,7 +88,7 @@ __weak uint8_t BSP_SD_Init(void)
 	hsd1.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
 	hsd1.Init.BusWide = SDMMC_BUS_WIDE_4B;
 	hsd1.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_ENABLE;
-	hsd1.Init.ClockDiv = 1;
+	hsd1.Init.ClockDiv = 8;
 
 	HAL_NVIC_SetPriority(SDMMC1_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(SDMMC1_IRQn);

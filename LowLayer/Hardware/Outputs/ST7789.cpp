@@ -16,7 +16,7 @@
  */
 void qcST7789::DriverInit (void)
 {
-	qmDelayMs(250);
+	qmDelayMs(500);
 
 	LCD_SPI_DMA_CLOCK_ENABLE();
 
