@@ -61,7 +61,7 @@ void qcST7789::DriverInit (void)
 	sConfigOC.OCIdleState  = TIM_OCIDLESTATE_RESET;
 
 	/* Set the pulse value for PWM channel */
-	sConfigOC.Pulse = 999;
+	sConfigOC.Pulse = 500;
 
 	if (HAL_TIM_PWM_ConfigChannel(&LCD_TIM_HANDLE, &sConfigOC, LCD_TIM_CHANNEL) != HAL_OK)
 		/* Configuration Error */

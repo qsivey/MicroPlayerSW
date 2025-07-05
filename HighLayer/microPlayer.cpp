@@ -14,10 +14,10 @@
 #include	"dr_flac.h"
 #include	"dr_wav.h"
 
-#include    "st7789.h"
-
 /* Offset from the current track name end symbol */
 #define		qsbCurTrNameEndOfs(ofs)	(fatFS.playlistTrackNames[fatFS.playlistTrackNamePointers[trackNumber + 1] - 1 - ofs])
+
+#define		qsbFloor(val)			((val) ? floor(val - 0.000001F) : (val))
 
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -608,197 +608,47 @@ uPlayerStatus_t qc_uPlayer::Play (void)
 }
 
 
-typedef struct
-{
-	FIL* file;
-	uint32_t remaining;
-
-}	jpeg_source_t;
-
-
-UINT tjd_input(JDEC* jd, uint8_t* buf, UINT len)
-{
-    jpeg_source_t* src = (jpeg_source_t*)jd->device;
-    UINT br;
-    if (len > src->remaining) len = src->remaining;
-
-    if (!buf)
-    {
-     buf = qmCreateArr(ui8, len);
-     f_read(src->file, buf, len, &br);
-     qmFree(buf);
-
-     return len;
-    }
-
-    if (f_read(src->file, buf, len, &br) != FR_OK)
-     return 0;
-
-    src->remaining -= br;
-    return br;
-}
-
-
-static ui16 imageBuf [ST7789_WIDTH * ST7789_HEIGHT];
-ui32 imageBufPointer = 0;
-
-
-INT tjd_output (JDEC *jd, void *bitmap, JRECT *rect)
-{
-    uint16_t* buf = (uint16_t*)bitmap;
-
-    for (ui16 i = 0; i < (rect->right - rect->left + 1) * (rect->bottom - rect->top + 1); i++)
-    {
-    	buf[i] = __REV16(buf[i]);
-    }
-
-    if ((rect->left >= ST7789_WIDTH) || (rect->right >= ST7789_WIDTH))
-		return -1;  // continue
-
-    if ((rect->top) >= ST7789_HEIGHT || (rect->bottom >= ST7789_HEIGHT))
-    	return 0;  // break
-
-    for (ui16 i = 0; i <= (rect->bottom - rect->top); i++)
-    	memcpy(&imageBuf[((i + rect->top) * ST7789_HEIGHT) + rect->left], &buf[i * ((rect->right - rect->left) + 1)], ((rect->right - rect->left) + 1) * 2);
-
-    return -1;
-}
-
-
-
-#pragma pack(push, 1)
-
-typedef struct
-{
-    uint16_t bfType;      // 'BM'
-    uint32_t bfSize;
-    uint16_t bfReserved1;
-    uint16_t bfReserved2;
-    uint32_t bfOffBits;
-} BMPHeader;
-
-typedef struct
-{
-    uint32_t biSize;
-    int32_t  biWidth;
-    int32_t  biHeight;
-    uint16_t biPlanes;
-    uint16_t biBitCount;
-    uint32_t biCompression;
-    uint32_t biSizeImage;
-    int32_t  biXPelsPerMeter;
-    int32_t  biYPelsPerMeter;
-    uint32_t biClrUsed;
-    uint32_t biClrImportant;
-} BMPInfoHeader;
-
-#pragma pack(pop)
-
-
-FRESULT write_bmp_to_file(const char *filename, uint16_t *framebuffer, int width, int height)
-{
-    FIL file;
-    FRESULT res;
-    UINT written;
-
-    BMPHeader header;
-    BMPInfoHeader info;
-
-    uint32_t row_size = width * 2;  // RGB565: 2 bytes на пиксель
-    uint32_t image_size = row_size * height;
-    uint32_t file_size = sizeof(BMPHeader) + sizeof(BMPInfoHeader) + image_size;
-
-    // --- Заполнение заголовков ---
-    header.bfType = 0x4D42; // 'BM'
-    header.bfSize = file_size;
-    header.bfReserved1 = 0;
-    header.bfReserved2 = 0;
-    header.bfOffBits = sizeof(BMPHeader) + sizeof(BMPInfoHeader);
-
-    info.biSize = sizeof(BMPInfoHeader);
-    info.biWidth = width;
-    info.biHeight = -height; // Отрицательное значение: данные идут от верхней строки
-    info.biPlanes = 1;
-    info.biBitCount = 16;  // RGB565
-    info.biCompression = 3; // BI_BITFIELDS
-    info.biSizeImage = image_size;
-    info.biXPelsPerMeter = 0;
-    info.biYPelsPerMeter = 0;
-    info.biClrUsed = 0;
-    info.biClrImportant = 0;
-
-    // Цветовая маска для RGB565
-    const uint32_t masks[3] = { 0xF800, 0x07E0, 0x001F };
-
-    // --- Открытие файла ---
-    res = f_open(&file, filename, FA_CREATE_ALWAYS | FA_WRITE);
-    if (res != FR_OK) return res;
-
-    // --- Запись заголовков ---
-    f_write(&file, &header, sizeof(header), &written);
-    f_write(&file, &info, sizeof(info), &written);
-    f_write(&file, masks, sizeof(masks), &written);  // маски для RGB565
-
-    // --- Запись пикселей ---
-    for (int y = 0; y < height; y++)
-    {
-        uint16_t *row = &framebuffer[width * y];
-
-        for (ui16 i = 0; i < width; i++)
-		{
-        	row[i] = __REV16(row[i]);
-		}
-
-        f_write(&file, row, row_size, &written);
-    }
-
-    f_close(&file);
-    return FR_OK;
-}
-
-
-FRESULT make_file_hidden(const char *filename)
-{
-    return f_chmod(filename, AM_HID, AM_HID);
-}
-
-
 NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 {
 	Init();
 	// todo parse .playlist file
 
-	FIL JPEG_File;
+	FRESULT res;
 
-	f_open(&JPEG_File, "1.jpg", FA_READ);
+	char original_path [64] = { 0 };
 
-	jpeg_source_t jpegSrc =
+	res = f_getcwd(original_path, sizeof(original_path));
+
+	res = f_mkdir("0:/cache");
+	res = f_chmod("0:/cache", AM_HID, AM_HID);
+
+	res = f_mkdir(qcfgCACHE_IMG_PATH);
+	res = f_chmod(qcfgCACHE_IMG_PATH, AM_HID, AM_HID);
+
+	char imagePathBuf [10] = { 0 };
+	char cachePathBuf [10] = { 0 };
+
+	JPEG_Temp = qmCreate(qsJPEG_t);
+
+	for (ui8 i = 1; i < 8; i++)
 	{
-		.file = &JPEG_File,
-		.remaining = 10000000
-	};
+		sprintf(imagePathBuf, "%d.jpg", i);
+		sprintf(cachePathBuf, "cache%d.bmp", i);
 
-	JDEC jd; uint8_t work [1024 * 64];
+		f_open(&JPEG_Temp->file, imagePathBuf, FA_READ);
 
-	ui32 time = qmGetTick();
+		RenderJPEG();
 
-	if (jd_prepare(&jd, tjd_input, work, sizeof(work), &jpegSrc) == JDR_OK)
-		jd_decomp(&jd, tjd_output, 1);  // 1 - 1/2, 2 - 1/4, 3 - 1/8
+		uPlayer.ST7789_DrawImage(0, 0, 240, 240, displayBuffer);
 
+		CacheDisplay(cachePathBuf);
 
-	ui32 difTime = qmGetTick() - time;
+		f_chdir(original_path);
 
-	uPlayer.ST7789_DrawImage(0, 0, 240, 240, imageBuf);
+		qmDelayMs(1000);
 
-	char difTimeStr [20];
-
-	sprintf_(difTimeStr, "%d", difTime);
-
-	write_bmp_to_file("bufferImage.bmp", imageBuf, 240, 240);
-
-	make_file_hidden("bufferImage.bmp");
-
-//	ST7789_WriteString(2, 2, difTimeStr, &Font20, GREEN, BLACK);
+		f_close(&JPEG_Temp->file);
+	}
 
 	while (1);
 

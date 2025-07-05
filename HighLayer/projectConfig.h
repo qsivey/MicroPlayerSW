@@ -22,6 +22,13 @@
 /* -------------------------------------------------
  * Low Layer Configs
  */
+#define		qcfgDISPLAY_WIDTH		240				// Units: pixel
+#define		qcfgDISPLAY_HEIGHT		240				// Units: pixel
+
+#define		qcfgPICTURE_RESOLUTION	240				// Units: pixel
+
+#define		qcfgTJD_BUFF_SIZE		(1024 * 64)		// Units: bytes
+
 #define		qcfgANTI_BOUNCE_DELAY	200				// Units: ms
 
 #define		qcfgHAL_TIMEOUT_DELAY	100				// Units: ms
@@ -44,6 +51,8 @@
 #define		qcfgMAX_VOLUME			16				// 1 --> 16
 #define		qcfgMIN_VOLUME			0				// 0 --> 15
 #define		qcfgINITIAL_VOLUME		12				// 0 --> 16
+
+#define		qcfgCACHE_IMG_PATH		"0:/cache/img"
 
 
 /* = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */

@@ -17,13 +17,11 @@
 #include	"analogChannels.h"
 #include	"digitalChannels.h"
 #include	"PCM5142.h"
-#include	"GUI.h"
 
 #include	"ff.h"
 #include	"ff_gen_drv.h"
 
-#include	"tjpgd.h"
-#include	"printf.h"
+#include	"GUI.h"
 
 #define		qmCall(method)			(this->*method)()
 
@@ -98,6 +96,20 @@ typedef struct
 }	qsFatFS_t;
 
 
+typedef struct
+{
+	ui8				bitRate;
+	ui32			sampleRate;
+
+	char			*name,
+					*artist,
+					*album;
+
+	char			*imageName;
+
+}	qsTrackMetadata_t;
+
+
 class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 					public qcDigitalChannels, public qcAnalogChannels
 {
@@ -116,11 +128,13 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 		char				printBuf [qcfgPRINT_BUF_SIZE];
 
 		/* Audio codec objects */
-		void*				PCM_Buffer;
+		void				*PCM_Buffer;
 
-		void*				track;
-		char*				trackPath;
+		void				*track;
+		char				*trackPath;
 		ui16				framesRead;
+
+		qsTrackMetadata_t	*trackMeta;
 
 		ui32				trackNumber;
 		ui32				totalTrackNumber;
