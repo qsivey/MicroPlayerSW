@@ -81,7 +81,7 @@ int qc_GUI::ScaleJPEG (void *bitmap, JRECT *rect)
 	return 1;
 }
 
-void qc_GUI::RenderJPEG (void)
+bool qc_GUI::RenderJPEG (void)
 {
 	JPEG_Temp->jd.device = (void*)this;
 
@@ -89,6 +89,11 @@ void qc_GUI::RenderJPEG (void)
 
 	if (res == JDR_OK)
 		jd_decomp(&JPEG_Temp->jd, OutputJPEG, 0);
+
+	else
+		return false;
+
+	return true;
 }
 
 
@@ -123,7 +128,7 @@ void qc_GUI::CacheDisplay (const char *filename)
     info.biClrUsed = 0;
     info.biClrImportant = 0;
 
-    const uint32_t masks[3] = { 0xF800, 0x07E0, 0x001F };
+    const uint32_t masks [3] = { 0xF800, 0x07E0, 0x001F };
 
     f_chdir(qcfgCACHE_IMG_PATH);
 
@@ -146,8 +151,6 @@ void qc_GUI::CacheDisplay (const char *filename)
 
         f_write(&file, row, row_size, &written);
     }
-
-    f_chmod(filename, AM_HID, AM_HID);
 
     f_close(&file);
 }

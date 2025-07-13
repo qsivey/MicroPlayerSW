@@ -38,28 +38,7 @@ void qcPCM5142::PCM5142_Init (void)
 	if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
 		HardwareErrorHandler();
 
-	/* I2S MspInit */
-	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = { 0 };
-	DMA_NodeConfTypeDef NodeConfig = { 0 };
-
-	/* Periph Config */
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI1;
-	PeriphClkInitStruct.PLL2.PLL2Source = RCC_PLL2_SOURCE_HSE;
-	PeriphClkInitStruct.PLL2.PLL2M = 16;
-	PeriphClkInitStruct.PLL2.PLL2N = 248;
-	PeriphClkInitStruct.PLL2.PLL2P = 1;
-	PeriphClkInitStruct.PLL2.PLL2Q = 2;
-	PeriphClkInitStruct.PLL2.PLL2R = 2;
-	PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2_VCIRANGE_1;
-	PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2_VCORANGE_WIDE;
-	PeriphClkInitStruct.PLL2.PLL2FRACN = 0.0;
-	PeriphClkInitStruct.PLL2.PLL2ClockOut = RCC_PLL2_DIVP;
-	PeriphClkInitStruct.Spi1ClockSelection = RCC_SPI1CLKSOURCE_PLL2P;
-
-	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-		HardwareErrorHandler();
-
-	/* I2S Init */
+	/* GPIO & Clock Init */
 	DAC_I2S_CLOCK_ENABLE();
 	DAC_I2S_GPIO_CLOCK_ENABLE();
 
@@ -83,33 +62,39 @@ void qcPCM5142::PCM5142_Init (void)
 	GPIO_InitStruct.Alternate = DAC_I2S_MCK_PIN_AF;
 	HAL_GPIO_Init(DAC_I2S_MCK_GPIO_PORT, &GPIO_InitStruct);
 
-	/* I2S1 DMA Init */
-	/* GPDMA1_REQUEST_SPI1_TX Init */
-	NodeConfig.NodeType = DMA_GPDMA_LINEAR_NODE;
-	NodeConfig.Init.Request = GPDMA1_REQUEST_SPI1_TX;
-	NodeConfig.Init.BlkHWRequest = DMA_BREQ_SINGLE_BURST;
-	NodeConfig.Init.Direction = DMA_MEMORY_TO_PERIPH;
-	NodeConfig.Init.SrcInc = DMA_SINC_INCREMENTED;
-	NodeConfig.Init.DestInc = DMA_DINC_FIXED;
-	NodeConfig.Init.SrcDataWidth = DMA_SRC_DATAWIDTH_HALFWORD;
-	NodeConfig.Init.DestDataWidth = DMA_DEST_DATAWIDTH_HALFWORD;
-	NodeConfig.Init.SrcBurstLength = 1;
-	NodeConfig.Init.DestBurstLength = 1;
-	NodeConfig.Init.TransferAllocatedPort = DMA_SRC_ALLOCATED_PORT0 | DMA_DEST_ALLOCATED_PORT1;
-	NodeConfig.Init.TransferEventMode = DMA_TCEM_BLOCK_TRANSFER;
-	NodeConfig.Init.Mode = DMA_NORMAL;
-	NodeConfig.TriggerConfig.TriggerPolarity = DMA_TRIG_POLARITY_MASKED;
-	NodeConfig.DataHandlingConfig.DataExchange = DMA_EXCHANGE_NONE;
-	NodeConfig.DataHandlingConfig.DataAlignment = DMA_DATA_RIGHTALIGN_ZEROPADDED;
+	/* DMA Node Configs */
+	auto SetupNode = [](DMA_NodeConfTypeDef &cfg, uint32_t srcWidth, uint32_t destWidth)
+	{
+		cfg.NodeType = DMA_GPDMA_LINEAR_NODE;
+		cfg.Init.Request = DAC_I2S_TX_DMA_REQUEST;
+		cfg.Init.BlkHWRequest = DMA_BREQ_SINGLE_BURST;
+		cfg.Init.Direction = DMA_MEMORY_TO_PERIPH;
+		cfg.Init.SrcInc = DMA_SINC_INCREMENTED;
+		cfg.Init.DestInc = DMA_DINC_FIXED;
+		cfg.Init.SrcDataWidth = srcWidth;
+		cfg.Init.DestDataWidth = destWidth;
+		cfg.Init.SrcBurstLength = 1;
+		cfg.Init.DestBurstLength = 1;
+		cfg.Init.TransferAllocatedPort = DMA_SRC_ALLOCATED_PORT0 | DMA_DEST_ALLOCATED_PORT1;
+		cfg.Init.TransferEventMode = DMA_TCEM_BLOCK_TRANSFER;
+		cfg.Init.Mode = DMA_NORMAL;
+		cfg.TriggerConfig.TriggerPolarity = DMA_TRIG_POLARITY_MASKED;
+		cfg.DataHandlingConfig.DataExchange = DMA_EXCHANGE_NONE;
+		cfg.DataHandlingConfig.DataAlignment = DMA_DATA_RIGHTALIGN_ZEROPADDED;
+	};
 
-	if (HAL_DMAEx_List_BuildNode(&NodeConfig, &DAC_I2S_TX_DMA_NODE) != HAL_OK)
-		HardwareErrorHandler();
+	DMA_NodeConfTypeDef NodeConfig16, NodeConfig32;
 
-	if (HAL_DMAEx_List_InsertNode(&DAC_I2S_TX_DMA_LIST, NULL, &DAC_I2S_TX_DMA_NODE) != HAL_OK)
-		HardwareErrorHandler();
+	SetupNode(NodeConfig16, DMA_SRC_DATAWIDTH_HALFWORD, DMA_DEST_DATAWIDTH_HALFWORD);
+	SetupNode(NodeConfig32, DMA_SRC_DATAWIDTH_WORD, DMA_DEST_DATAWIDTH_WORD);
 
-	if (HAL_DMAEx_List_SetCircularMode(&DAC_I2S_TX_DMA_LIST) != HAL_OK)
-		HardwareErrorHandler();
+	HAL_DMAEx_List_BuildNode(&NodeConfig16, &DAC_I2S_TX_DMA_NODE_16B);
+	HAL_DMAEx_List_InsertNode(&DAC_I2S_TX_DMA_LIST_16B, NULL, &DAC_I2S_TX_DMA_NODE_16B);
+	HAL_DMAEx_List_SetCircularMode(&DAC_I2S_TX_DMA_LIST_16B);
+
+	HAL_DMAEx_List_BuildNode(&NodeConfig32, &DAC_I2S_TX_DMA_NODE_32B);
+	HAL_DMAEx_List_InsertNode(&DAC_I2S_TX_DMA_LIST_32B, NULL, &DAC_I2S_TX_DMA_NODE_32B);
+	HAL_DMAEx_List_SetCircularMode(&DAC_I2S_TX_DMA_LIST_32B);
 
 	DAC_I2S_TX_DMA_HANDLE.Instance = DAC_I2S_TX_DMA_INSTANCE;
 	DAC_I2S_TX_DMA_HANDLE.InitLinkedList.Priority = DMA_HIGH_PRIORITY;
@@ -119,9 +104,6 @@ void qcPCM5142::PCM5142_Init (void)
 	DAC_I2S_TX_DMA_HANDLE.InitLinkedList.LinkedListMode = DMA_LINKEDLIST_CIRCULAR;
 
 	if (HAL_DMAEx_List_Init(&DAC_I2S_TX_DMA_HANDLE) != HAL_OK)
-		HardwareErrorHandler();
-
-	if (HAL_DMAEx_List_LinkQ(&DAC_I2S_TX_DMA_HANDLE, &DAC_I2S_TX_DMA_LIST) != HAL_OK)
 		HardwareErrorHandler();
 
 	__HAL_LINKDMA(&DAC_I2S_HANDLE, hdmatx, DAC_I2S_TX_DMA_HANDLE);
@@ -165,12 +147,14 @@ void qcPCM5142::PCM5142_Init (void)
 	/* Reset */
 	PCM5142_Write(2, 0x10);  // Standby
 	PCM5142_Write(1, 0x11);  // Reset registers
+
+	qmDelayMs(20);
+
 	PCM5142_Write(2, 0);  // Normal operation
 
-	qmDelayMs(10);
+	qmDelayMs(20);
 
 	PCM5142_Write(3, 0);  // Digital unmute
-
 	PCM5142_Write(4, 1);  // Enable PLL
 
 //	PCM5142_Write(9, 0);  // I2S Input
@@ -246,67 +230,67 @@ void qcPCM5142::PCM5142_SetBitRate (ui8 bitRate)
 	if (currentBitRate == bitRate)
 		return;
 
+	HAL_I2S_DeInit(&DAC_I2S_HANDLE);
+	__HAL_DMA_DISABLE(&DAC_I2S_TX_DMA_HANDLE);
+
+	if (HAL_DMAEx_List_Init(&DAC_I2S_TX_DMA_HANDLE) != HAL_OK)
+		HardwareErrorHandler();
+
 	switch (bitRate)
 	{
-		case 16 :
-		{
-			DAC_I2S_TX_DMA_HANDLE.Init.SrcDataWidth = DMA_SRC_DATAWIDTH_HALFWORD;
-			DAC_I2S_TX_DMA_HANDLE.Init.DestDataWidth = DMA_DEST_DATAWIDTH_HALFWORD;
-
-			if (HAL_DMA_Init(&DAC_I2S_TX_DMA_HANDLE) != HAL_OK)
+		case 16:
+			if (HAL_DMAEx_List_LinkQ(&DAC_I2S_TX_DMA_HANDLE, &DAC_I2S_TX_DMA_LIST_16B) != HAL_OK)
 				HardwareErrorHandler();
+
+			__HAL_LINKDMA(&DAC_I2S_HANDLE, hdmatx, DAC_I2S_TX_DMA_HANDLE);
 
 			DAC_I2S_HANDLE.Init.DataFormat = I2S_DATAFORMAT_16B;
 
 			if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
 				HardwareErrorHandler();
 
-			PCM5142_Write(40, 0);
+			PCM5142_Write(40, 0);  // 16 bit
 
 			break;
-		}
 
-		case 24 :
-		{
-			if (bitRate != 32)
+		case 24:
+			if (currentBitRate != 32)
 			{
-				DAC_I2S_TX_DMA_HANDLE.Init.SrcDataWidth = DMA_SRC_DATAWIDTH_WORD;
-				DAC_I2S_TX_DMA_HANDLE.Init.DestDataWidth = DMA_DEST_DATAWIDTH_WORD;
+				if (HAL_DMAEx_List_LinkQ(&DAC_I2S_TX_DMA_HANDLE, &DAC_I2S_TX_DMA_LIST_32B) != HAL_OK)
+					HardwareErrorHandler();
 
-				if (HAL_DMA_Init(&DAC_I2S_TX_DMA_HANDLE) != HAL_OK)
+				__HAL_LINKDMA(&DAC_I2S_HANDLE, hdmatx, DAC_I2S_TX_DMA_HANDLE);
+
+				DAC_I2S_HANDLE.Init.DataFormat = I2S_DATAFORMAT_32B;
+
+				if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
 					HardwareErrorHandler();
 			}
 
-			DAC_I2S_HANDLE.Init.DataFormat = I2S_DATAFORMAT_32B;
-
-			if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
-				HardwareErrorHandler();
-
-			PCM5142_Write(40, 2);
+			PCM5142_Write(40, 2);  // 24 bit
 
 			break;
-		}
 
-		case 32 :
-		{
-			if (bitRate != 24)
+		case 32:
+			if (currentBitRate != 24)
 			{
-				DAC_I2S_TX_DMA_HANDLE.Init.SrcDataWidth = DMA_SRC_DATAWIDTH_WORD;
-				DAC_I2S_TX_DMA_HANDLE.Init.DestDataWidth = DMA_DEST_DATAWIDTH_WORD;
+				if (HAL_DMAEx_List_LinkQ(&DAC_I2S_TX_DMA_HANDLE, &DAC_I2S_TX_DMA_LIST_32B) != HAL_OK)
+					HardwareErrorHandler();
 
-				if (HAL_DMA_Init(&DAC_I2S_TX_DMA_HANDLE) != HAL_OK)
+				__HAL_LINKDMA(&DAC_I2S_HANDLE, hdmatx, DAC_I2S_TX_DMA_HANDLE);
+
+				DAC_I2S_HANDLE.Init.DataFormat = I2S_DATAFORMAT_32B;
+
+				if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
 					HardwareErrorHandler();
 			}
 
-			DAC_I2S_HANDLE.Init.DataFormat = I2S_DATAFORMAT_32B;
-
-			if (HAL_I2S_Init(&DAC_I2S_HANDLE) != HAL_OK)
-				HardwareErrorHandler();
-
-			PCM5142_Write(40, 3);
+			PCM5142_Write(40, 3);  // 32 bit
 
 			break;
-		}
+
+		default:
+			return;
 	}
 
 	currentBitRate = bitRate;
@@ -329,8 +313,8 @@ void qcPCM5142::PCM5142_SetSampleRate (ui32 sampleRate)
 
 		case 44100 :
 		{
-			PeriphClkInitStruct.PLL2.PLL2N = 65;
-			PeriphClkInitStruct.PLL2.PLL2P = 4;
+//			PeriphClkInitStruct.PLL2.PLL2N = 65;
+//			PeriphClkInitStruct.PLL2.PLL2P = 4;
 
 			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_44K;
 
@@ -339,9 +323,6 @@ void qcPCM5142::PCM5142_SetSampleRate (ui32 sampleRate)
 
 		case 48000 :
 		{
-			PeriphClkInitStruct.PLL2.PLL2N = 31;
-			PeriphClkInitStruct.PLL2.PLL2P = 2;
-
 			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_48K;
 
 			break;
@@ -349,9 +330,6 @@ void qcPCM5142::PCM5142_SetSampleRate (ui32 sampleRate)
 
 		case 96000 :
 		{
-			PeriphClkInitStruct.PLL2.PLL2N = 29;
-			PeriphClkInitStruct.PLL2.PLL2P = 2;
-
 			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_96K;
 
 			break;
@@ -359,9 +337,6 @@ void qcPCM5142::PCM5142_SetSampleRate (ui32 sampleRate)
 
 		case 192000 :
 		{
-			PeriphClkInitStruct.PLL2.PLL2N = 31;
-			PeriphClkInitStruct.PLL2.PLL2P = 2;
-
 			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_192K;
 
 			break;
@@ -369,9 +344,6 @@ void qcPCM5142::PCM5142_SetSampleRate (ui32 sampleRate)
 
 		case 384000 :
 		{
-			PeriphClkInitStruct.PLL2.PLL2N = 31;
-			PeriphClkInitStruct.PLL2.PLL2P = 1;
-
 			DAC_I2S_HANDLE.Init.AudioFreq = I2S_AUDIOFREQ_192K * 2;
 
 			break;

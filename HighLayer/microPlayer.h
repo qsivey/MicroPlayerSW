@@ -55,6 +55,16 @@ typedef enum
 
 typedef enum
 {
+	uPL_ERROR_NONE					= 0,
+
+	uPL_FILE_OPEN_ERROR				= 0x01,
+	uPL_TRACK_OPEN_ERROR			= 0x02
+
+}	uPlayerError_t;
+
+
+typedef enum
+{
 	uPL_OK							= 0,
 	uPL_ERROR
 
@@ -128,8 +138,7 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 		char				printBuf [qcfgPRINT_BUF_SIZE];
 
 		/* Audio codec objects */
-		void				*PCM_Buffer;
-
+		FIL					file;					// It's more stable to have this object static
 		void				*track;
 		char				*trackPath;
 		ui16				framesRead;
@@ -159,6 +168,7 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 		uPlayerStatus_t		CloseWAV (void);
 
 		/* High layer objects */
+		uPlayerError_t		error;
 		uPlayerStatus_t		status;
 		uPlayerState_t		state;
 
@@ -170,6 +180,17 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 
 		uPlayerStatus_t		InitCodec (void);
 		uPlayerStatus_t		DeinitCodec (void);
+
+		void				OnVolumeDownPress (void *param);
+		void				OnVolumeDownHold (void *param);
+		void				OnVolumeUpPress (void *param);
+		void				OnVolumeUpHold (void *param);
+		void				OnTrackPlayPress (void *param);
+		void				OnTrackPlayHold (void *param);
+		void				OnTrackBackPress (void *param);
+		void				OnTrackBackHold (void *param);
+		void				OnTrackNextPress (void *param);
+		void				OnTrackNextHold (void *param);
 
 		bool				GetEvent (uPlayerEvent_t event) { return this->event & event; }
 		void				SetEvent (uPlayerEvent_t newEvent) { event = (uPlayerEvent_t)(event | newEvent); }

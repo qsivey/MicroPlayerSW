@@ -107,7 +107,7 @@ class qc_GUI : public qcST7789
 		static size_t		InputJPEG (JDEC* jd, uint8_t* buff, size_t len);
 		static int			OutputJPEG (JDEC *jd, void *bitmap, JRECT *rect);
 		int					ScaleJPEG (void *bitmap, JRECT *rect);
-		void				RenderJPEG (void);
+		bool				RenderJPEG (void);
 
 		/* Cache */
 		void				CacheDisplay (const char *filename);

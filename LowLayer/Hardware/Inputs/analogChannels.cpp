@@ -26,11 +26,11 @@ void qcAnalogChannels::ADC_Init (void)
 	ADC_HANDLE.Init.Resolution				= ADC_RESOLUTION_12B;
 	ADC_HANDLE.Init.ExternalTrigConvEdge	= ADC_EXTERNALTRIGCONVEDGE_NONE;
 	ADC_HANDLE.Init.ExternalTrigConv		= ADC_SOFTWARE_START;
-	ADC_HANDLE.Init.ContinuousConvMode		= ENABLE;
+	ADC_HANDLE.Init.ContinuousConvMode		= DISABLE;
 	ADC_HANDLE.Init.DiscontinuousConvMode	= DISABLE;
-	ADC_HANDLE.Init.DMAContinuousRequests	= ENABLE;
-	ADC_HANDLE.Init.EOCSelection			= ADC_EOC_SEQ_CONV;
-	ADC_HANDLE.Init.ScanConvMode			= ENABLE;
+	ADC_HANDLE.Init.DMAContinuousRequests	= DISABLE;
+	ADC_HANDLE.Init.EOCSelection			= ADC_EOC_SINGLE_CONV;
+	ADC_HANDLE.Init.ScanConvMode			= DISABLE;
 	ADC_HANDLE.Init.NbrOfDiscConversion		= 0;
 	ADC_HANDLE.Init.DataAlign				= ADC_DATAALIGN_RIGHT;
 	ADC_HANDLE.Init.NbrOfConversion			= 1;
@@ -47,24 +47,20 @@ void qcAnalogChannels::ADC_Init (void)
 	if (HAL_ADC_ConfigChannel(&ADC_HANDLE, &sConfig) != HAL_OK)
 		HardwareErrorHandler();
 
-	/* ADC Channel GPIO pin configuration */
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-
 	GPIO_InitStruct.Pin = BAT_LEVEL_PIN;
 	GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 	HAL_GPIO_Init(BAT_LEVEL_GPIO_PORT, &GPIO_InitStruct);
-
-	if (HAL_ADC_Start_DMA(&ADC_HANDLE, (ui32*)analogValues, ANALOG_VALUES_AVERAGE) != HAL_OK)
-		HardwareErrorHandler();
 }
 
 
 void qcAnalogChannels::ReadBatteryLevel (void)
 {
-	ui32 averageValue = 0;
+	if (HAL_ADC_Start(&ADC_HANDLE) != HAL_OK)
+		HardwareErrorHandler();
 
-	for (ui8 i = 0; i < ANALOG_VALUES_AVERAGE; i++)
-		averageValue += analogValues[i];
+	if (HAL_ADC_PollForConversion(&ADC_HANDLE, 10) != HAL_OK)
+		HardwareErrorHandler();
 
-	batteryLevel = averageValue / ANALOG_VALUES_AVERAGE;
+	batteryLevel = HAL_ADC_GetValue(&ADC_HANDLE);
 }

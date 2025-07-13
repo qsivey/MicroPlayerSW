@@ -81,71 +81,61 @@ extern qc_uPlayer uPlayer;
 /* Buttons */
 void VOLUME_DOWN_IRQ_HANDLER (void)
 {
-	if (uPlayer.buttonsState == BS_RELEASED)
+	if (uPlayer.Buttons[BUT_VOL_DOWN].status == BS_RELEASED)
 	{
-		if (__HAL_GPIO_EXTI_GET_IT(VOLUME_DOWN_PIN))
-			uPlayer.SetEvent(uPL_EVENT_VOLUME_DOWN);
+		uPlayer.Buttons[BUT_VOL_DOWN].status = BS_ANTI_BOUNCE;
+		uPlayer.Buttons[BUT_VOL_DOWN].pressTime = qmGetTick();
 	}
 
-	HAL_GPIO_EXTI_IRQHandler(VOLUME_DOWN_PIN);
-
-	uPlayer.buttonsState = BS_PRESSED;
+	HAL_GPIO_EXTI_IRQHandler(uPlayer.Buttons[BUT_VOL_DOWN].pin);
 }
 
 
 void VOLUME_UP_IRQ_HANDLER (void)
 {
-	if (uPlayer.buttonsState == BS_RELEASED)
+	if (uPlayer.Buttons[BUT_VOL_UP].status == BS_RELEASED)
 	{
-		if (__HAL_GPIO_EXTI_GET_IT(VOLUME_UP_PIN))
-			uPlayer.SetEvent(uPL_EVENT_VOLUME_UP);
+		uPlayer.Buttons[BUT_VOL_UP].status = BS_ANTI_BOUNCE;
+		uPlayer.Buttons[BUT_VOL_UP].pressTime = qmGetTick();
 	}
 
-	HAL_GPIO_EXTI_IRQHandler(VOLUME_UP_PIN);
-
-	uPlayer.buttonsState = BS_PRESSED;
+	HAL_GPIO_EXTI_IRQHandler(uPlayer.Buttons[BUT_VOL_UP].pin);
 }
 
 
 void TRACK_PLAY_IRQ_HANDLER (void)
 {
-	if (uPlayer.buttonsState == BS_RELEASED)
+	if (uPlayer.Buttons[BUT_TRACK_PLAY].status == BS_RELEASED)
 	{
-		if (__HAL_GPIO_EXTI_GET_IT(TRACK_PLAY_PIN))
-			uPlayer.SetEvent(uPL_EVENT_TRACK_PAUSE_PLAY);
+		uPlayer.Buttons[BUT_TRACK_PLAY].status = BS_ANTI_BOUNCE;
+		uPlayer.Buttons[BUT_TRACK_PLAY].pressTime = qmGetTick();
 	}
 
-	HAL_GPIO_EXTI_IRQHandler(TRACK_PLAY_PIN);
-
-	uPlayer.buttonsState = BS_PRESSED;
+	HAL_GPIO_EXTI_IRQHandler(uPlayer.Buttons[BUT_TRACK_PLAY].pin);
 }
 
 
 void TRACK_BACK_IRQ_HANDLER (void)
 {
-	if (uPlayer.buttonsState == BS_RELEASED)
+	if (uPlayer.Buttons[BUT_TRACK_BACK].status == BS_RELEASED)
 	{
-		if (__HAL_GPIO_EXTI_GET_IT(TRACK_BACK_PIN))
-			uPlayer.SetEvent(uPL_EVENT_TRACK_BACK);
+		uPlayer.Buttons[BUT_TRACK_BACK].status = BS_ANTI_BOUNCE;
+		uPlayer.Buttons[BUT_TRACK_BACK].pressTime = qmGetTick();
 	}
 
-	HAL_GPIO_EXTI_IRQHandler(TRACK_BACK_PIN);
-
-	uPlayer.buttonsState = BS_PRESSED;
+	HAL_GPIO_EXTI_IRQHandler(uPlayer.Buttons[BUT_TRACK_BACK].pin);
 }
 
 
 void TRACK_NEXT_IRQ_HANDLER (void)
 {
-	if (uPlayer.buttonsState == BS_RELEASED)
+	if (uPlayer.Buttons[BUT_TRACK_NEXT].status == BS_RELEASED)
 	{
-		if (__HAL_GPIO_EXTI_GET_IT(TRACK_NEXT_PIN))
-			uPlayer.SetEvent(uPL_EVENT_TRACK_NEXT);
+		uPlayer.Buttons[BUT_TRACK_NEXT].status = BS_ANTI_BOUNCE;
+		uPlayer.Buttons[BUT_TRACK_NEXT].pressTime = qmGetTick();
 	}
 
-	HAL_GPIO_EXTI_IRQHandler(TRACK_NEXT_PIN);
-
-	uPlayer.buttonsState = BS_PRESSED;
+	HAL_GPIO_EXTI_IRQHandler(uPlayer.Buttons[BUT_TRACK_NEXT].pin);
 }
 
 

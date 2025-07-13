@@ -14,16 +14,57 @@
 #include	"dr_flac.h"
 #include	"dr_wav.h"
 
-/* Offset from the current track name end symbol */
-#define		qsbCurTrNameEndOfs(ofs)	(fatFS.playlistTrackNames[fatFS.playlistTrackNamePointers[trackNumber + 1] - 1 - ofs])
-
-#define		qsbFloor(val)			((val) ? floor(val - 0.000001F) : (val))
-
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														  Global Objects
  */
 qc_uPlayer uPlayer;
+
+
+/* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+ *														Static Functions
+ */
+static size_t DrLibRead (void *pUserData, void *pBufferOut, size_t bytesToRead)
+{
+    FIL *file = (FIL*)pUserData;
+    UINT bytesRead;
+    FRESULT res = f_read(file, pBufferOut, bytesToRead, &bytesRead);
+
+    return (res == FR_OK) ? bytesRead : 0;
+}
+
+
+static unsigned int DrLibTell (void *pUserData, signed long long *pCursor)
+{
+	FIL *file = (FIL*)pUserData;
+
+	*pCursor = f_tell(file);
+
+	return 1;
+}
+
+
+static unsigned int DrLibSeek (void *pUserData, int offset, int origin)
+{
+    FIL *file = (FIL*)pUserData;
+
+    return (f_lseek_ext(file, offset, origin) == FR_OK) ? 1 : 0;
+}
+
+static drmp3_bool32 DrMP3_Seek (void *pUserData, int offset, drmp3_seek_origin origin)
+{
+	return DrLibSeek(pUserData, offset, origin);
+}
+
+static drflac_bool32 DrFLAC_Seek (void *pUserData, int offset, drflac_seek_origin origin)
+{
+	return DrLibSeek(pUserData, offset, origin);
+}
+
+static drwav_bool32 DrWAV_Seek (void *pUserData, int offset, drwav_seek_origin origin)
+{
+	return DrLibSeek(pUserData, offset, origin);
+}
 
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -33,7 +74,14 @@ uPlayerStatus_t qc_uPlayer::OpenMP3 (void)
 {
 	track = qmCreate(drmp3);
 
-	drmp3_init_file((drmp3*)track, trackPath, NULL);
+	if (drmp3_init((drmp3*)track, DrLibRead, DrMP3_Seek, DrLibTell, NULL, &file, NULL) != DRMP3_TRUE)
+	{
+		qmDestroy(track);
+
+		error = uPL_TRACK_OPEN_ERROR;
+
+		return uPL_ERROR;
+	}
 
 	PCM5142_SetSampleRate(((drmp3*)track)->sampleRate);
 	PCM5142_SetBitRate(16);
@@ -48,7 +96,7 @@ uPlayerStatus_t qc_uPlayer::OpenMP3 (void)
 
 uPlayerStatus_t qc_uPlayer::OpenFLAC (void)
 {
-	track = drflac_open_file(trackPath, NULL);
+	track = drflac_open(DrLibRead, DrFLAC_Seek, DrLibTell, &file, NULL);
 
 	PCM5142_SetSampleRate(((drflac*)track)->sampleRate);
 	PCM5142_SetBitRate(((drflac*)track)->bitsPerSample);
@@ -75,7 +123,7 @@ uPlayerStatus_t qc_uPlayer::OpenWAV (void)
 {
 	track = qmCreate(drwav);
 
-	drwav_init_file((drwav*)track, trackPath, NULL);
+	drwav_init((drwav*)track, DrLibRead, DrWAV_Seek, DrLibTell, &file, NULL);
 
 	PCM5142_SetSampleRate(((drwav*)track)->sampleRate);
 	PCM5142_SetBitRate(((drwav*)track)->bitsPerSample);
@@ -100,14 +148,17 @@ uPlayerStatus_t qc_uPlayer::OpenWAV (void)
 
 uPlayerStatus_t qc_uPlayer::ReadMP3 (void)
 {
-	if (bufferOffset == BUFFER_OFFSET_FULL)
-		framesRead = drmp3_read_pcm_frames_s16((drmp3*)track, qcfgPCM_BUFFER_SIZE / 4, (drmp3_int16*)PCM_Buffer);
+	if (bufferOffset != BUFFER_OFFSET_NONE)
+	{
+		if (bufferOffset == BUFFER_OFFSET_FULL)
+			framesRead = drmp3_read_pcm_frames_s16((drmp3*)track, qcfgPCM_BUFFER_SIZE / 4, (drmp3_int16*)PCM_Buffer);
 
-	else if (bufferOffset == BUFFER_OFFSET_HALF)
-		framesRead = drmp3_read_pcm_frames_s16((drmp3*)track, qcfgPCM_BUFFER_SIZE / 4,
-				(drmp3_int16*)(((drmp3_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+		else
+			framesRead = drmp3_read_pcm_frames_s16((drmp3*)track, qcfgPCM_BUFFER_SIZE / 4,
+					(drmp3_int16*)(((drmp3_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
-	assign_(bufferOffset, BUFFER_OFFSET_NONE);
+		bufferOffset = BUFFER_OFFSET_NONE;
+	}
 
 	return uPL_OK;
 }
@@ -115,14 +166,17 @@ uPlayerStatus_t qc_uPlayer::ReadMP3 (void)
 
 uPlayerStatus_t qc_uPlayer::ReadFLAC_16 (void)
 {
-	if (bufferOffset == BUFFER_OFFSET_FULL)
-		framesRead = drflac_read_pcm_frames_s16((drflac*)track, qcfgPCM_BUFFER_SIZE / 4, (drflac_int16*)PCM_Buffer);
+	if (bufferOffset != BUFFER_OFFSET_NONE)
+	{
+		if (bufferOffset == BUFFER_OFFSET_FULL)
+			framesRead = drflac_read_pcm_frames_s16((drflac*)track, qcfgPCM_BUFFER_SIZE / 4, (drflac_int16*)PCM_Buffer);
 
-	else if (bufferOffset == BUFFER_OFFSET_HALF)
-		framesRead = drflac_read_pcm_frames_s16((drflac*)track, qcfgPCM_BUFFER_SIZE / 4,
-				(drflac_int16*)(((drflac_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+		else
+			framesRead = drflac_read_pcm_frames_s16((drflac*)track, qcfgPCM_BUFFER_SIZE / 4,
+					(drflac_int16*)(((drflac_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
-	assign_(bufferOffset, BUFFER_OFFSET_NONE);
+		bufferOffset = BUFFER_OFFSET_NONE;
+	}
 
 	return uPL_OK;
 }
@@ -130,14 +184,17 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_16 (void)
 
 uPlayerStatus_t qc_uPlayer::ReadFLAC_32 (void)
 {
-	if (bufferOffset == BUFFER_OFFSET_FULL)
-		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4, (drflac_int32*)PCM_Buffer);
+	if (bufferOffset != BUFFER_OFFSET_NONE)
+	{
+		if (bufferOffset == BUFFER_OFFSET_FULL)
+			framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4, (drflac_int32*)PCM_Buffer);
 
-	else if (bufferOffset == BUFFER_OFFSET_HALF)
-		framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4,
-				(drflac_int32*)(((drflac_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+		else
+			framesRead = drflac_read_pcm_frames_s32((drflac*)track, qcfgPCM_BUFFER_SIZE / 4,
+					(drflac_int32*)(((drflac_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
-	assign_(bufferOffset, BUFFER_OFFSET_NONE);
+		bufferOffset = BUFFER_OFFSET_NONE;
+	}
 
 	return uPL_OK;
 }
@@ -145,14 +202,17 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_32 (void)
 
 uPlayerStatus_t qc_uPlayer::ReadWAV_16 (void)
 {
-	if (bufferOffset == BUFFER_OFFSET_FULL)
-		framesRead = drwav_read_pcm_frames_s16((drwav*)track, qcfgPCM_BUFFER_SIZE / 4, (drwav_int16*)PCM_Buffer);
+	if (bufferOffset != BUFFER_OFFSET_NONE)
+	{
+		if (bufferOffset == BUFFER_OFFSET_FULL)
+			framesRead = drwav_read_pcm_frames_s16((drwav*)track, qcfgPCM_BUFFER_SIZE / 4, (drwav_int16*)PCM_Buffer);
 
-	else if (bufferOffset == BUFFER_OFFSET_HALF)
-		framesRead = drwav_read_pcm_frames_s16((drwav*)track, qcfgPCM_BUFFER_SIZE / 4,
-				(drwav_int16*)(((drwav_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+		else
+			framesRead = drwav_read_pcm_frames_s16((drwav*)track, qcfgPCM_BUFFER_SIZE / 4,
+					(drwav_int16*)(((drwav_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
-	assign_(bufferOffset, BUFFER_OFFSET_NONE);
+		bufferOffset = BUFFER_OFFSET_NONE;
+	}
 
 	return uPL_OK;
 }
@@ -160,14 +220,17 @@ uPlayerStatus_t qc_uPlayer::ReadWAV_16 (void)
 
 uPlayerStatus_t qc_uPlayer::ReadWAV_32 (void)
 {
-	if (bufferOffset == BUFFER_OFFSET_FULL)
-		framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4, (drwav_int32*)PCM_Buffer);
+	if (bufferOffset != BUFFER_OFFSET_NONE)
+	{
+		if (bufferOffset == BUFFER_OFFSET_FULL)
+			framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4, (drwav_int32*)PCM_Buffer);
 
-	else if (bufferOffset == BUFFER_OFFSET_HALF)
-		framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4,
-				(drwav_int32*)(((drwav_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+		else
+			framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4,
+					(drwav_int32*)(((drwav_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
 
-	assign_(bufferOffset, BUFFER_OFFSET_NONE);
+		bufferOffset = BUFFER_OFFSET_NONE;
+	}
 
 	return uPL_OK;
 }
@@ -176,6 +239,7 @@ uPlayerStatus_t qc_uPlayer::ReadWAV_32 (void)
 uPlayerStatus_t qc_uPlayer::CloseMP3 (void)
 {
 	drmp3_uninit((drmp3*)track);
+	f_close(&file);
 
 	qmDestroy(PCM_Buffer);
 	qmDestroy(track);
@@ -187,6 +251,7 @@ uPlayerStatus_t qc_uPlayer::CloseMP3 (void)
 uPlayerStatus_t qc_uPlayer::CloseFLAC (void)
 {
 	drflac_close((drflac*)track);
+	f_close(&file);
 
 	qmDestroy(PCM_Buffer);
 	qmDestroy(track);
@@ -198,6 +263,7 @@ uPlayerStatus_t qc_uPlayer::CloseFLAC (void)
 uPlayerStatus_t qc_uPlayer::CloseWAV (void)
 {
 	drwav_uninit((drwav*)track);
+	f_close(&file);
 
 	qmDestroy(PCM_Buffer);
 	qmDestroy(track);
@@ -220,12 +286,65 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	ST7789_Init();
 
 	/* Analog channels init */
-//	ADC_Init();
+	ADC_Init();
 
 	/* All buttons init */
 	ButtonsInit();
 
-	/* Mount file system */
+	Buttons[BUT_VOL_DOWN].OnPress = [](void *param)
+	{
+		static_cast<qc_uPlayer*>(param)->OnVolumeDownPress(nullptr);
+	};
+
+			Buttons[BUT_VOL_DOWN].OnHold = [](void *param)
+			{
+				static_cast<qc_uPlayer*>(param)->OnVolumeDownHold(nullptr);
+			};
+
+	Buttons[BUT_VOL_UP].OnPress = [](void *param)
+	{
+		static_cast<qc_uPlayer*>(param)->OnVolumeUpPress(nullptr);
+	};
+
+			Buttons[BUT_VOL_UP].OnHold = [](void *param)
+			{
+				static_cast<qc_uPlayer*>(param)->OnVolumeUpHold(nullptr);
+			};
+
+	Buttons[BUT_TRACK_PLAY].OnPress = [](void *param)
+	{
+		static_cast<qc_uPlayer*>(param)->OnTrackPlayPress(nullptr);
+	};
+
+			Buttons[BUT_TRACK_PLAY].OnHold = [](void *param)
+			{
+				static_cast<qc_uPlayer*>(param)->OnTrackPlayHold(nullptr);
+			};
+
+	Buttons[BUT_TRACK_BACK].OnPress = [](void *param)
+	{
+		static_cast<qc_uPlayer*>(param)->OnTrackBackPress(nullptr);
+	};
+
+			Buttons[BUT_TRACK_BACK].OnHold = [](void *param)
+			{
+				static_cast<qc_uPlayer*>(param)->OnTrackBackHold(nullptr);
+			};
+
+	Buttons[BUT_TRACK_NEXT].OnPress = [](void *param)
+	{
+		static_cast<qc_uPlayer*>(param)->OnTrackNextPress(nullptr);
+	};
+
+			Buttons[BUT_TRACK_NEXT].OnHold = [](void *param)
+			{
+				static_cast<qc_uPlayer*>(param)->OnTrackNextHold(nullptr);
+			};
+
+	for (ui8 i = 0; i < BUT_NUMBER; i++)
+		Buttons[i].pThis = this;
+
+	/* Mount file system : "0:/\0" */
 	extern Diskio_drvTypeDef SDMMC_Driver;
 
 	FATFS_LinkDriver(&SDMMC_Driver, fatFS.SD_Path);
@@ -245,13 +364,14 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 
 	playMode = (uPlayerPlayMode_t)(uPL_MODE_NORMAL | uPL_MODE_REPEAT_PLAYLIST);
 
+	error = uPL_ERROR_NONE;
 	state = uPL_STOP;
 
 	return uPL_OK;
 }
 
 
-uPlayerStatus_t qc_uPlayer::InitFolder (const char *folder)
+uPlayerStatus_t qc_uPlayer::InitFolder(const char *folder)
 {
 	ui16 fileNameLength = 0;
 	ui32 totalFileNameLength = 0;
@@ -259,45 +379,62 @@ uPlayerStatus_t qc_uPlayer::InitFolder (const char *folder)
 	totalTrackNumber = 0;
 
 	FRESULT res = f_chdir(folder);
-
-	/* Enter into a folder */
 	res = f_findfirst(&fatFS.dir, &fatFS.fno, folder, "*");
 
-	/* Count total file name length */
+	/* First pass: count valid audio files */
 	while (res == FR_OK && fatFS.fno.fname[0])
 	{
-		if (!(fatFS.fno.fattrib & AM_DIR))  // Skip the folders
+		if (!(fatFS.fno.fattrib & AM_DIR))  // Skip folders
 		{
-			totalTrackNumber++;
-			totalFileNameLength += strlen(fatFS.fno.fname);
+			const char *name = fatFS.fno.fname;
+			const char *ext = strrchr(name, '.');
 
-			res = f_findnext(&fatFS.dir, &fatFS.fno);
+			if (ext &&
+				((!strcasecmp(ext, ".mp3") ||
+				!strcasecmp(ext, ".flac") || !strcasecmp(ext, ".ogg")) ||
+				!strcasecmp(ext, ".wav") || !strcasecmp(ext, ".wv")))
+			{
+				totalTrackNumber++;
+				totalFileNameLength += strlen(name) + 1;
+			}
 		}
+
+		res = f_findnext(&fatFS.dir, &fatFS.fno);
 	}
 
-	fatFS.playlistTrackNames = qmCreateArr(char, totalFileNameLength + totalTrackNumber);
+	fatFS.playlistTrackNames = qmCreateArr(char, totalFileNameLength);
 	fatFS.playlistTrackNamePointers = qmCreateArr(ui16, totalTrackNumber * 2 + 2);
 
-	totalFileNameLength = 0;  // For now this is the cursor
-
+	totalFileNameLength = 0;
 	res = f_findfirst(&fatFS.dir, &fatFS.fno, folder, "*");
 
-	/* Write file names and assign the pointers */
+	/* Second pass: store valid audio file names */
 	ui32 i = 0;
 
-	for (; (res == FR_OK) && (fatFS.fno.fname[0]); i++)
+	while (res == FR_OK && fatFS.fno.fname[0])
 	{
-		if (!(fatFS.fno.fattrib & AM_DIR))  // Skip the folders
+		if (!(fatFS.fno.fattrib & AM_DIR))
 		{
-			fileNameLength = strlen(fatFS.fno.fname) + 1;
+			const char *name = fatFS.fno.fname;
+			const char *ext = strrchr(name, '.');
 
-			fatFS.playlistTrackNamePointers[i] = totalFileNameLength;
+			if (ext &&
+				((!strcasecmp(ext, ".mp3") ||
+				!strcasecmp(ext, ".flac") || !strcasecmp(ext, ".ogg")) ||
+				!strcasecmp(ext, ".wav") || !strcasecmp(ext, ".wv")))
+			{
+				fileNameLength = strlen(name) + 1;
 
-			memcpy(&fatFS.playlistTrackNames[totalFileNameLength], fatFS.fno.fname, fileNameLength);
-			totalFileNameLength += fileNameLength;
+				fatFS.playlistTrackNamePointers[i] = totalFileNameLength;
 
-			res = f_findnext(&fatFS.dir, &fatFS.fno);
+				memcpy(&fatFS.playlistTrackNames[totalFileNameLength], name, fileNameLength);
+				totalFileNameLength += fileNameLength;
+
+				i++;
+			}
 		}
+
+		res = f_findnext(&fatFS.dir, &fatFS.fno);
 	}
 
 	fatFS.playlistTrackNamePointers[i] = totalFileNameLength;
@@ -311,38 +448,40 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 	/* Load current track from playlist */
 	trackPath = &fatFS.playlistTrackNames[fatFS.playlistTrackNamePointers[trackNumber]];
 
-	/* Check current audio file */
-	uPlayerFileCodec_t fileCodec;
-
-	// todo add other formats
-	if (((qsbCurTrNameEndOfs(3) == 'm') && (qsbCurTrNameEndOfs(2) == 'p') && (qsbCurTrNameEndOfs(1) == '3')) ||
-		((qsbCurTrNameEndOfs(3) == 'M') && (qsbCurTrNameEndOfs(2) == 'P') && (qsbCurTrNameEndOfs(1) == '3')))
-		fileCodec = uPLFC_MP3;
-
-	/* .flac */
-	else if (((qsbCurTrNameEndOfs(4) == 'f') && (qsbCurTrNameEndOfs(3) == 'l') && (qsbCurTrNameEndOfs(2) == 'a') && (qsbCurTrNameEndOfs(1) == 'c')) ||
-		((qsbCurTrNameEndOfs(4) == 'F') && (qsbCurTrNameEndOfs(3) == 'L') && (qsbCurTrNameEndOfs(2) == 'A') && (qsbCurTrNameEndOfs(1) == 'C')))
-		fileCodec = uPLFC_FLAC;
-
-	/* .ogg */
-	else if (((qsbCurTrNameEndOfs(3) == 'o') && (qsbCurTrNameEndOfs(2) == 'g') && (qsbCurTrNameEndOfs(1) == 'g')) ||
-		((qsbCurTrNameEndOfs(3) == 'O') && (qsbCurTrNameEndOfs(2) == 'G') && (qsbCurTrNameEndOfs(1) == 'G')))
-		fileCodec = uPLFC_OGG;
-
-	/* .wav */
-	else if (((qsbCurTrNameEndOfs(3) == 'w') && (qsbCurTrNameEndOfs(2) == 'a') && (qsbCurTrNameEndOfs(1) == 'v')) ||
-		((qsbCurTrNameEndOfs(3) == 'W') && (qsbCurTrNameEndOfs(2) == 'A') && (qsbCurTrNameEndOfs(1) == 'V')))
-		fileCodec = uPLFC_WAV;
-
-	/* .wv todo??? */
-	else if (((qsbCurTrNameEndOfs(2) == 'w') && (qsbCurTrNameEndOfs(1) == 'v')) ||
-		((qsbCurTrNameEndOfs(2) == 'W') && (qsbCurTrNameEndOfs(1) == 'V')))
-		fileCodec = uPLFC_WAV;
-
-	else
+	if (f_open(&file, trackPath, FA_READ) != FR_OK)
 	{
 		SetEvent(uPL_EVENT_TRACK_NEXT);
 		status = uPL_ERROR;
+
+		error = uPL_FILE_OPEN_ERROR;
+		currentCodec = uPLFC_NONE;
+
+		return uPL_ERROR;  // Not supported format
+	}
+
+	/* Check current audio file */
+	const char *ext = strrchr(trackPath, '.');
+	uPlayerFileCodec_t fileCodec = uPLFC_NONE;
+
+	if (ext)
+	{
+		if (!strcasecmp(ext, ".mp3"))
+			fileCodec = uPLFC_MP3;
+
+		else if (!strcasecmp(ext, ".flac") || !strcasecmp(ext, ".ogg"))
+			fileCodec = uPLFC_FLAC;
+
+		else if (!strcasecmp(ext, ".wav") || !strcasecmp(ext, ".wv"))
+			fileCodec = uPLFC_WAV;
+	}
+
+	else
+	{
+		f_close(&file);
+
+		SetEvent(uPL_EVENT_TRACK_NEXT);
+		status = uPL_ERROR;
+
 		return uPL_ERROR;  // Not supported format
 	}
 
@@ -377,7 +516,14 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 	}
 
 	/* Preparing */
-	qmCall(OpenTrack);
+	if (qmCall(OpenTrack) != uPL_OK)
+	{
+		f_close(&file);
+
+		status = uPL_ERROR;
+
+		return uPL_ERROR;
+	}
 
 	qmCall(ReadFrames);
 	bufferOffset = BUFFER_OFFSET_HALF;
@@ -389,7 +535,7 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 	HAL_I2S_Transmit_DMA(&DAC_I2S_HANDLE, (ui16*)PCM_Buffer, qcfgPCM_BUFFER_SIZE);
 
 	state = uPL_PLAY;
-	status = uPL_OK;
+
 
 	return uPL_OK;
 }
@@ -408,6 +554,66 @@ uPlayerStatus_t qc_uPlayer::DeinitCodec (void)
 	qmCall(CloseTrack);
 
 	return uPL_OK;
+}
+
+
+void qc_uPlayer::OnVolumeDownPress (void *param)
+{
+	SetEvent(uPL_EVENT_VOLUME_DOWN);
+}
+
+
+void qc_uPlayer::OnVolumeDownHold (void *param)
+{
+
+}
+
+
+void qc_uPlayer::OnVolumeUpPress (void *param)
+{
+	SetEvent(uPL_EVENT_VOLUME_UP);
+}
+
+
+void qc_uPlayer::OnVolumeUpHold (void *param)
+{
+
+}
+
+
+void qc_uPlayer::OnTrackPlayPress (void *param)
+{
+	SetEvent(uPL_EVENT_TRACK_PAUSE_PLAY);
+}
+
+
+void qc_uPlayer::OnTrackPlayHold (void *param)
+{
+
+}
+
+
+void qc_uPlayer::OnTrackBackPress (void *param)
+{
+	SetEvent(uPL_EVENT_TRACK_BACK);
+}
+
+
+void qc_uPlayer::OnTrackBackHold (void *param)
+{
+
+}
+
+
+void qc_uPlayer::OnTrackNextPress (void *param)
+{
+	SetEvent(uPL_EVENT_TRACK_NEXT);
+}
+
+
+void qc_uPlayer::OnTrackNextHold (void *param)
+{
+
 }
 
 
@@ -613,44 +819,50 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 	Init();
 	// todo parse .playlist file
 
-	FRESULT res;
 
-	char original_path [64] = { 0 };
-
-	res = f_getcwd(original_path, sizeof(original_path));
-
-	res = f_mkdir("0:/cache");
-	res = f_chmod("0:/cache", AM_HID, AM_HID);
-
-	res = f_mkdir(qcfgCACHE_IMG_PATH);
-	res = f_chmod(qcfgCACHE_IMG_PATH, AM_HID, AM_HID);
-
-	char imagePathBuf [10] = { 0 };
-	char cachePathBuf [10] = { 0 };
-
-	JPEG_Temp = qmCreate(qsJPEG_t);
-
-	for (ui8 i = 1; i < 8; i++)
-	{
-		sprintf(imagePathBuf, "%d.jpg", i);
-		sprintf(cachePathBuf, "cache%d.bmp", i);
-
-		f_open(&JPEG_Temp->file, imagePathBuf, FA_READ);
-
-		RenderJPEG();
-
-		uPlayer.ST7789_DrawImage(0, 0, 240, 240, displayBuffer);
-
-		CacheDisplay(cachePathBuf);
-
-		f_chdir(original_path);
-
-		qmDelayMs(1000);
-
-		f_close(&JPEG_Temp->file);
-	}
-
-	while (1);
+//	FRESULT res;
+//
+//	char original_path [64] = { 0 };
+//
+//	res = f_getcwd(original_path, sizeof(original_path));
+//
+//	res = f_mkdir("0:/cache");
+//	res = f_chmod("0:/cache", AM_HID, AM_HID);
+//
+//	res = f_mkdir(qcfgCACHE_IMG_PATH);
+//
+//	char imagePathBuf [14] = { 0 };
+//	char cachePathBuf [14] = { 0 };
+//
+//	JPEG_Temp = qmCreate(qsJPEG_t);
+//
+//	static volatile ui16 ok = 0, error = 0;
+//
+//	for (ui8 i = 1; i < 255; i++)
+//	{
+//		sprintf(imagePathBuf, "a (%d).jpg", i);
+//		sprintf(cachePathBuf, "cache%d.bmp", i);
+//
+//		if (f_open(&JPEG_Temp->file, imagePathBuf, FA_READ) != FR_OK)
+//			break;
+//
+//		if (RenderJPEG())
+//		{
+//			uPlayer.ST7789_DrawImage(0, 0, 240, 240, displayBuffer);
+//			CacheDisplay(cachePathBuf);
+//			f_chdir(original_path);
+////			qmDelayMs(1000);
+//
+//			ok++;
+//		}
+//
+//		else
+//			error++;
+//
+//		f_close(&JPEG_Temp->file);
+//	}
+//
+//	while (1);
 
 
 //	InitFolder("/flac/Scaled and Icy");
@@ -658,7 +870,7 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 //	InitFolder("/flac/Blurryface");
 //	InitFolder("/flac/Home");
 	InitFolder("/flac/Bounce Into The Music");
-
+//
 
 //	InitFolder("/wav");
 //	InitFolder("/mp3");
@@ -672,6 +884,7 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 			Play();
 
 		ButtonsHandle();
+		ReadBatteryLevel();
 		EventHandler();
 	}
 }

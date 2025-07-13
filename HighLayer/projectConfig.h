@@ -29,7 +29,8 @@
 
 #define		qcfgTJD_BUFF_SIZE		(1024 * 64)		// Units: bytes
 
-#define		qcfgANTI_BOUNCE_DELAY	200				// Units: ms
+#define		qcfgANTI_BOUNCE_DELAY	100				// Units: ms
+#define		qcfgBUTTON_HOLD_DELAY	2000			// Units: ms
 
 #define		qcfgHAL_TIMEOUT_DELAY	100				// Units: ms
 
@@ -40,7 +41,7 @@
 /* -------------------------------------------------
  * High Layer Configs
  */
-#define		qcfgPCM_BUFFER_SIZE		(1024 * 16)		// Units: bytes * size. 1024 --> 32768
+#define		qcfgPCM_BUFFER_SIZE		(1024 * 16 - 8)	// Units: bytes * size. 2KB -> 16 KB
 
 #define		qcfgVOLUME_BAR_TIMER	2000			// Units: ms
 
@@ -50,7 +51,7 @@
 
 #define		qcfgMAX_VOLUME			16				// 1 --> 16
 #define		qcfgMIN_VOLUME			0				// 0 --> 15
-#define		qcfgINITIAL_VOLUME		12				// 0 --> 16
+#define		qcfgINITIAL_VOLUME		14				// 0 --> 16
 
 #define		qcfgCACHE_IMG_PATH		"0:/cache/img"
 

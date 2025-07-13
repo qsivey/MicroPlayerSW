@@ -18,16 +18,9 @@
 
 #include	"periph.h"
 
-#define		ANALOG_VALUES_AVERAGE	16
-
 
 class qcAnalogChannels : virtual public qcPeripheral
 {
-	private :
-
-		ui16				analogValues [ANALOG_VALUES_AVERAGE];
-
-
 	public :
 
 		ui16				batteryLevel;

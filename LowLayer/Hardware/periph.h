@@ -85,14 +85,11 @@
  * DAC I2S DMA Module Config
  */
 #define		DAC_I2S_TX_DMA_HANDLE	qdma_spi1_tx
-#define		DAC_I2S_TX_DMA_INSTANCE	GPDMA1_Channel5
+#define		DAC_I2S_TX_DMA_INSTANCE	GPDMA1_Channel6
 #define		DAC_I2S_TX_DMA_REQUEST	GPDMA1_REQUEST_SPI1_TX
 
-#define		DAC_I2S_TX_DMA_NODE		qNode_GPDMA1_Channel5
-#define		DAC_I2S_TX_DMA_LIST		qList_GPDMA1_Channel5
-
-#define 	DAC_I2S_TX_DMA_CH_IRQN			GPDMA1_Channel5_IRQn
-#define		DAC_I2S_TX_DMA_IRQ_HANDLER		GPDMA1_Channel5_IRQHandler
+#define 	DAC_I2S_TX_DMA_CH_IRQN			GPDMA1_Channel6_IRQn
+#define		DAC_I2S_TX_DMA_IRQ_HANDLER		GPDMA1_Channel6_IRQHandler
 
 #define		DAC_I2S_TX_DMA_NODE_HANDLE		qdma_spi1_tx_node
 
@@ -224,14 +221,14 @@
 #define		VOLUME_UP_IRQ_HANDLER	EXTI2_IRQHandler
 
 /* Back pin */
-#define 	TRACK_BACK_PIN			GPIO_PIN_14
-#define		TRACK_BACK_IRQN			EXTI14_IRQn
-#define		TRACK_BACK_IRQ_HANDLER	EXTI14_IRQHandler
+#define 	TRACK_BACK_PIN			GPIO_PIN_15
+#define		TRACK_BACK_IRQN			EXTI15_IRQn
+#define		TRACK_BACK_IRQ_HANDLER	EXTI15_IRQHandler
 
 /* Next pin */
-#define 	TRACK_NEXT_PIN			GPIO_PIN_15
-#define		TRACK_NEXT_IRQN			EXTI15_IRQn
-#define		TRACK_NEXT_IRQ_HANDLER	EXTI15_IRQHandler
+#define 	TRACK_NEXT_PIN			GPIO_PIN_14
+#define		TRACK_NEXT_IRQN			EXTI14_IRQn
+#define		TRACK_NEXT_IRQ_HANDLER	EXTI14_IRQHandler
 
 /* Pause pin */
 #define 	TRACK_PLAY_PIN			GPIO_PIN_13
@@ -256,8 +253,10 @@ class qcPeripheral
 		/* DAC handle objects */
 		I2S_HandleTypeDef	DAC_I2S_HANDLE;
 		DMA_HandleTypeDef	DAC_I2S_TX_DMA_HANDLE;
-		DMA_NodeTypeDef		DAC_I2S_TX_DMA_NODE;
-		DMA_QListTypeDef	DAC_I2S_TX_DMA_LIST;
+		DMA_NodeTypeDef		DAC_I2S_TX_DMA_NODE_16B;
+		DMA_QListTypeDef	DAC_I2S_TX_DMA_LIST_16B;
+		DMA_NodeTypeDef		DAC_I2S_TX_DMA_NODE_32B;
+		DMA_QListTypeDef	DAC_I2S_TX_DMA_LIST_32B;
 		I2C_HandleTypeDef	DAC_I2C_HANDLE;
 
 		/* LCD handle objects */

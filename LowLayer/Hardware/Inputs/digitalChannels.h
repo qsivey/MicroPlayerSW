@@ -16,21 +16,54 @@
 #include	"periph.h"
 
 
+typedef		void					(*qfButtonHandler_t)(void *param);
+
+
+typedef enum
+{
+	BUT_VOL_DOWN					= 0,
+	BUT_VOL_UP,
+	BUT_TRACK_PLAY,
+	BUT_TRACK_BACK,
+	BUT_TRACK_NEXT,
+
+	BUT_NUMBER
+
+}	qeButtons_t;
+
+
 typedef enum
 {
 	BS_RELEASED						= 0,
+	BS_ANTI_BOUNCE,
+	BS_LOCKED,
 	BS_PRESSED,
-	BS_LOCKED
+	BS_HOLD
 
-}	qeButtonsState_t;
+}	qeButtonStatus_t;
+
+
+typedef struct
+{
+	GPIO_TypeDef			*gpio;
+	ui32					pin;
+
+	qeButtonStatus_t		status;
+	ui32					pressTime;
+
+	qfButtonHandler_t		OnPress,
+							OnHold;
+
+	void					*pThis;
+
+}	qsButtons_t;
 
 
 class qcDigitalChannels
 {
 	public :
 
-		qeButtonsState_t	buttonsState;
-		ui32				buttonsTime;
+		qsButtons_t			*Buttons;
 
 		void				ButtonsInit (void);
 		void				ButtonsHandle (void);

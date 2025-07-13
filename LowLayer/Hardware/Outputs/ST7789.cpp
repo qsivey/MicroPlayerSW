@@ -596,6 +596,7 @@ void qcST7789::ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data)
 
 	if ((x + w - 1) >= ST7789_WIDTH)
 		return;
+
 	if ((y + h - 1) >= ST7789_HEIGHT)
 		return;
 

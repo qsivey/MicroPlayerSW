@@ -46,6 +46,8 @@ class qcPCM5142 : virtual public qcPeripheral
 
 	public :
 
+		void				*PCM_Buffer;
+
 		ui8					volume;
 		bool				amplitudeBoost;
 

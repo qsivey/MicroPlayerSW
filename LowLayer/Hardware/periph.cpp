@@ -56,6 +56,11 @@ void qcPeripheral::PeriphCommonClockConfig (void)
 	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI3;
 	PeriphClkInitStruct.Spi3ClockSelection = RCC_SPI3CLKSOURCE_PLL1Q;
 
+	PeriphClkInitStruct.PLL2.PLL2Source = RCC_PLL2_SOURCE_HSI;
+	PeriphClkInitStruct.PLL2.PLL2M = 25;
+	PeriphClkInitStruct.PLL2.PLL2N = 192;
+	PeriphClkInitStruct.PLL2.PLL2P = 2;
+
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 		HardwareErrorHandler();
 }
