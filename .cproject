@@ -60,7 +60,8 @@
 									<listOptionValue builtIn="false" value="../LowLayer/it"/>
 									<listOptionValue builtIn="false" value="../HighLayer"/>
 									<listOptionValue builtIn="false" value="../Middleware/jpeg"/>
-									<listOptionValue builtIn="false" value="../Middleware/Fonts"/>
+									<listOptionValue builtIn="false" value="../Middleware/graphics/Fonts"/>
+									<listOptionValue builtIn="false" value="../Middleware/graphics/images"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.699120335" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -84,7 +85,8 @@
 									<listOptionValue builtIn="false" value="../LowLayer/it"/>
 									<listOptionValue builtIn="false" value="../HighLayer"/>
 									<listOptionValue builtIn="false" value="../Middleware/jpeg"/>
-									<listOptionValue builtIn="false" value="../Middleware/Fonts"/>
+									<listOptionValue builtIn="false" value="../Middleware/graphics/Fonts"/>
+									<listOptionValue builtIn="false" value="../Middleware/graphics/images"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.option.definedsymbols.1001765170" name="Define symbols (-D)" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.option.definedsymbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="DEBUG"/>
@@ -224,7 +226,7 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.pathentry"/>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="MicroPlayer.null.413960791" name="MicroPlayer"/>
+		<project id="MicroPlayer.null.1923026360" name="MicroPlayer"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>

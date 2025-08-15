@@ -23,10 +23,10 @@ class qcAnalogChannels : virtual public qcPeripheral
 {
 	public :
 
-		ui16				batteryLevel;
+		//ui16				batteryLevel;
 
 		void				ADC_Init (void);
-		void				ReadBatteryLevel (void);
+		ui16				ReadBatteryLevel (void);
 
 };
 

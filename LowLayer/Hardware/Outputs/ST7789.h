@@ -178,7 +178,9 @@
 #define DARKBLUE    0X01CF
 #define LIGHTBLUE   0X7D7C
 #define GRAYBLUE    0X5458
-
+#define	ORANGE 		0XE480
+#define LIGHTBLUE	0X065C
+#define VIOLET		0X601F
 #define LIGHTGREEN  0X841F
 #define LGRAY       0XC618
 #define LGRAYBLUE   0XA651
@@ -246,6 +248,26 @@ typedef enum
 }	qeTxDMA_Mode_t;
 
 
+typedef struct {
+    ui16 x_start, x_end, y;
+    const char *str;
+    tFont *font;
+    ui16 color, bgColor;
+
+    ui16 total_width;
+    ui16 scroll;
+    ui8 str_len;
+    ui16 char_widths[256];
+} ScrollTextState;
+
+
+typedef struct {
+	ui16 *buffer;
+    ui16 buf_width;
+    ui16 height;
+} RenderedText;
+
+
 class qcST7789 : virtual public qcPeripheral
 {
 	private :
@@ -292,16 +314,23 @@ class qcST7789 : virtual public qcPeripheral
 		void				ST7789_DrawRectangle(ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 thick, ui16 color);
 		void				ST7789_DrawFilledRectangle(ui16 x, ui16 y, ui16 w, ui16 h, ui16 color);
 		void				ST7789_DrawCircle (ui16 x0, ui16 y0, ui8 r, ui16 color);
+		void				ST7789_DrawFilledCircle (i16 x0, i16 y0, i16 r, ui16 color);
 		void				ST7789_DrawTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
 		void				ST7789_DrawFilledTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
-		void				ST7789_DrawFilledCircle (i16 x0, i16 y0, i16 r, ui16 color);
 
-		void				ST7789_WriteChar (ui16 x, ui16 y, char ch, tFont *font, ui16 color, ui16 bgColor);
-		void				ST7789_WriteString (ui16 x, ui16 y, char *str, tFont *font, ui16 color, ui16 bgColor);
+		void				ST7789_WriteChar (ui16 x, ui16 y, const tImage* img, ui16 color, ui16 bgColor);
+		void				ST7789_WriteString (ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor);
+
 
 		void				ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
+		void				ST7789_DrawPartofImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
 
 		ui32				ST7789_TestFPS (void);
+		void				ST7789_Rainbow (void);
+
+		/* auxiliary functions for char */
+		uint32_t			utf8_merge_code(const char **ptr);
+		const tChar*		find_char(const tFont* font, uint32_t code);
 
 };
 

@@ -24,6 +24,7 @@ qc_uPlayer uPlayer;
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														Static Functions
  */
+
 static size_t DrLibRead (void *pUserData, void *pBufferOut, size_t bytesToRead)
 {
     FIL *file = (FIL*)pUserData;
@@ -72,6 +73,11 @@ static drwav_bool32 DrWAV_Seek (void *pUserData, int offset, drwav_seek_origin o
  */
 uPlayerStatus_t qc_uPlayer::OpenMP3 (void)
 {
+	MP3MetaInfo(trackPath);
+
+	PrintTrackInfo();
+	PrintTrackTime();
+
 	track = qmCreate(drmp3);
 
 	if (drmp3_init((drmp3*)track, DrLibRead, DrMP3_Seek, DrLibTell, NULL, &file, NULL) != DRMP3_TRUE)
@@ -96,6 +102,10 @@ uPlayerStatus_t qc_uPlayer::OpenMP3 (void)
 
 uPlayerStatus_t qc_uPlayer::OpenFLAC (void)
 {
+	FlacMetaInfo(trackPath);
+	PrintTrackInfo();
+	PrintTrackTime();
+
 	track = drflac_open(DrLibRead, DrFLAC_Seek, DrLibTell, &file, NULL);
 
 	PCM5142_SetSampleRate(((drflac*)track)->sampleRate);
@@ -121,6 +131,10 @@ uPlayerStatus_t qc_uPlayer::OpenFLAC (void)
 
 uPlayerStatus_t qc_uPlayer::OpenWAV (void)
 {
+	WAVMetaInfo(trackPath);
+	PrintTrackInfo();
+	PrintTrackTime();
+
 	track = qmCreate(drwav);
 
 	drwav_init((drwav*)track, DrLibRead, DrWAV_Seek, DrLibTell, &file, NULL);
@@ -222,12 +236,13 @@ uPlayerStatus_t qc_uPlayer::ReadWAV_32 (void)
 {
 	if (bufferOffset != BUFFER_OFFSET_NONE)
 	{
-		if (bufferOffset == BUFFER_OFFSET_FULL)
+		if (bufferOffset == BUFFER_OFFSET_FULL){
 			framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4, (drwav_int32*)PCM_Buffer);
-
-		else
+		}
+		else{
 			framesRead = drwav_read_pcm_frames_s32((drwav*)track, qcfgPCM_BUFFER_SIZE / 4,
-					(drwav_int32*)(((drwav_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+			(drwav_int32*)(((drwav_int32*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+		}
 
 		bufferOffset = BUFFER_OFFSET_NONE;
 	}
@@ -244,6 +259,8 @@ uPlayerStatus_t qc_uPlayer::CloseMP3 (void)
 	qmDestroy(PCM_Buffer);
 	qmDestroy(track);
 
+	mp3_meta.flag = false;
+
 	return uPL_OK;
 }
 
@@ -256,6 +273,8 @@ uPlayerStatus_t qc_uPlayer::CloseFLAC (void)
 	qmDestroy(PCM_Buffer);
 	qmDestroy(track);
 
+	flac_meta.flag = false;
+
 	return uPL_OK;
 }
 
@@ -267,6 +286,8 @@ uPlayerStatus_t qc_uPlayer::CloseWAV (void)
 
 	qmDestroy(PCM_Buffer);
 	qmDestroy(track);
+
+	wav_meta.flag = false;
 
 	return uPL_OK;
 }
@@ -290,6 +311,15 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 
 	/* All buttons init */
 	ButtonsInit();
+
+	/* RealTimeClock init*/
+	//RTC_Init();
+
+	/* Menu init*/
+	InitMenu(0);
+	menu.index = 0;
+	menu.where = 0;
+
 
 	Buttons[BUT_VOL_DOWN].OnPress = [](void *param)
 	{
@@ -320,6 +350,11 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 			{
 				static_cast<qc_uPlayer*>(param)->OnTrackPlayHold(nullptr);
 			};
+
+				Buttons[BUT_TRACK_PLAY].OnLastHold = [](void *param)
+				{
+					static_cast<qc_uPlayer*>(param)->OnTrackPlayLastHold(nullptr);
+				};
 
 	Buttons[BUT_TRACK_BACK].OnPress = [](void *param)
 	{
@@ -589,7 +624,13 @@ void qc_uPlayer::OnTrackPlayPress (void *param)
 
 void qc_uPlayer::OnTrackPlayHold (void *param)
 {
+	SetEvent(uPL_EVENT_TRACK_PAUSE_PLAY_HOLD);
+}
 
+
+void qc_uPlayer::OnTrackPlayLastHold (void *param)
+{
+	;
 }
 
 
@@ -637,35 +678,125 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 			break;
 
 		case uPL_EVENT_TRACK_BACK :
-			Back();
+			if (StatusDisplay == uPL_STATUS_PLAYER)
+			{
+				Back();
+			}
+			if (StatusDisplay == uPL_STATUS_MENU)
+			{
+				if (menu.where == 0){
+					if (menu.index == 0)
+						menu.index = MAX_COMPONENTS - 1;
+					else
+						menu.index--;
+					DrawMenu(menu.index);
+				}
+				else if (menu.where == 1){
+					if (menu.subindex == 0)
+						menu.subindex = folderCount - 1;
+					else
+						menu.subindex--;
+					DrawFolderMenu(menu.subindex);
+				}
+				else if (menu.where == 2){
+					if (menu.subindex == 0)
+						menu.subindex = MAX_LANGUAGES - 1;
+					else
+						menu.subindex--;
+					Language(menu.subindex);
+				}
+			}
 			ResetEvent(uPL_EVENT_TRACK_BACK);
 			break;
 
 		case uPL_EVENT_TRACK_NEXT :
-			Next();
+			if (StatusDisplay == uPL_STATUS_PLAYER)
+			{
+				Next();
+			}
+			if (StatusDisplay == uPL_STATUS_MENU){
+				if (menu.where == 0){
+					if (menu.index == (MAX_COMPONENTS - 1)) menu.index = 0;
+					else menu.index++;
+					DrawMenu(menu.index);
+				}
+				else if (menu.where == 2){
+					if (menu.subindex == (MAX_LANGUAGES - 1)) menu.subindex = 0;
+					else menu.subindex++;
+					Language(menu.subindex);
+				}
+				else if (menu.where == 1){
+					if (menu.subindex == (folderCount - 1)) menu.subindex = 0;
+					else menu.subindex++;
+					DrawFolderMenu(menu.subindex);
+				}
+			}
 			ResetEvent(uPL_EVENT_TRACK_NEXT);
 			break;
 
-		case uPL_EVENT_TRACK_PAUSE_PLAY :
-			if (state == uPL_STOP)
+		case uPL_EVENT_TRACK_PAUSE_PLAY_HOLD :
+			if (StatusDisplay == uPL_STATUS_PLAYER)
+			{
+				Buttons[BUT_TRACK_PLAY].status = BS_RELEASED;
+				DeinitCodec();
+				StatusDisplay = uPL_STATUS_MENU;
+
+				DrawMenu(menu.index);
+			}
+			else if (StatusDisplay == uPL_STATUS_MENU)
+			{
+				Buttons[BUT_TRACK_PLAY].status = BS_RELEASED;
+				StatusDisplay = uPL_STATUS_PLAYER;
+				menu.where = 0;
+				menu.index = 0;
+				menu.subindex = 0;
+
 				InitCodec();
 
-			else if (state == uPL_PAUSE)
+				ST7789_FillColor(BLACK);
+				PrintTrackInfo();
+				PrintTrackTime();
+			}
+			ResetEvent(uPL_EVENT_TRACK_PAUSE_PLAY_HOLD);
+			break;
+		case uPL_EVENT_TRACK_PAUSE_PLAY :
+			if (StatusDisplay == uPL_STATUS_PLAYER)
 			{
-				PCM5142_Unmute();
+				if (state == uPL_STOP)
+					InitCodec();
 
-				HAL_I2S_DMAResume(&DAC_I2S_HANDLE);
+				else if (state == uPL_PAUSE)
+				{
+					ST7789_DrawFilledRectangle(0, 0, 240, 19, BLACK);
+					ST7789_DrawFilledRectangle(193, 220, 47, 20, BLACK);
+					PrintTrackTime();
 
-				state = uPL_PLAY;
+					PCM5142_Unmute();
+					HAL_I2S_DMAResume(&DAC_I2S_HANDLE);
+
+					state = uPL_PLAY;
+				}
+
+				else if (state == uPL_PLAY)
+				{
+					Pause();
+					DrawAttributes();
+					state = uPL_PAUSE;
+				}
 			}
 
-			else if (state == uPL_PLAY)
+			if (StatusDisplay == uPL_STATUS_MENU)
 			{
-				Pause();
-
-				state = uPL_PAUSE;
+				if 		(menu.where == 0) 	Transition(menu.index);
+				else if (menu.where == 1)	{
+					DeinitCodec();
+				}
+				else if (menu.where == 2) 	SelectLang(menu.subindex);
+				else if (menu.where == 4) {
+											menu.where = 0;
+											DrawMenu(menu.index);
+				}
 			}
-
 			ResetEvent(uPL_EVENT_TRACK_PAUSE_PLAY);
 
 			break;
@@ -700,7 +831,7 @@ uPlayerStatus_t	qc_uPlayer::VolumeUp (void)
 		volume = qcfgMAX_VOLUME;
 	}
 
-//	ShowVolumeBar(volume);
+	ShowVolumeBar(volume);
 
 	return uPL_OK;
 }
@@ -726,7 +857,7 @@ uPlayerStatus_t qc_uPlayer::VolumeDown (void)
 	else
 		volume = qcfgMIN_VOLUME;
 
-//	ShowVolumeBar(volume);
+	ShowVolumeBar(volume);
 
 	return uPL_OK;
 }
@@ -792,7 +923,7 @@ uPlayerStatus_t qc_uPlayer::Pause (void)
 	PCM5142_Mute();
 	qmDelayMs(20);
 
-	HAL_I2S_DMAPause(&uPlayer.DAC_I2S_HANDLE);
+	//HAL_I2S_DMAPause(&uPlayer.DAC_I2S_HANDLE);
 
 	return uPL_OK;
 }
@@ -817,65 +948,28 @@ uPlayerStatus_t qc_uPlayer::Play (void)
 NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 {
 	Init();
-	// todo parse .playlist file
 
+	ScanFolders();//"flac"
+	selectedFolderIndex = 0;
 
-//	FRESULT res;
-//
-//	char original_path [64] = { 0 };
-//
-//	res = f_getcwd(original_path, sizeof(original_path));
-//
-//	res = f_mkdir("0:/cache");
-//	res = f_chmod("0:/cache", AM_HID, AM_HID);
-//
-//	res = f_mkdir(qcfgCACHE_IMG_PATH);
-//
-//	char imagePathBuf [14] = { 0 };
-//	char cachePathBuf [14] = { 0 };
-//
-//	JPEG_Temp = qmCreate(qsJPEG_t);
-//
-//	static volatile ui16 ok = 0, error = 0;
-//
-//	for (ui8 i = 1; i < 255; i++)
-//	{
-//		sprintf(imagePathBuf, "a (%d).jpg", i);
-//		sprintf(cachePathBuf, "cache%d.bmp", i);
-//
-//		if (f_open(&JPEG_Temp->file, imagePathBuf, FA_READ) != FR_OK)
-//			break;
-//
-//		if (RenderJPEG())
-//		{
-//			uPlayer.ST7789_DrawImage(0, 0, 240, 240, displayBuffer);
-//			CacheDisplay(cachePathBuf);
-//			f_chdir(original_path);
-////			qmDelayMs(1000);
-//
-//			ok++;
-//		}
-//
-//		else
-//			error++;
-//
-//		f_close(&JPEG_Temp->file);
-//	}
-//
-//	while (1);
+	FRESULT res;
 
+	char original_path [64] = { 0 };
 
-//	InitFolder("/flac/Scaled and Icy");
-//	InitFolder("/flac/Trench");
-//	InitFolder("/flac/Blurryface");
-//	InitFolder("/flac/Home");
-	InitFolder("/flac/Bounce Into The Music");
-//
+	res = f_getcwd(original_path, sizeof(original_path));
 
-//	InitFolder("/wav");
-//	InitFolder("/mp3");
-//	InitFolder("/cmp");
+	res = f_mkdir("0:/cache");
+	res = f_chmod("0:/cache", AM_HID, AM_HID);
 
+	res = f_mkdir(qcfgCACHE_IMG_PATH);
+
+//	InitFolder("/flac/Bounce Into The Music");
+	InitFolder("/mymusic/mp3nik");
+//	InitFolder("/mymusic/wav");
+//	InitFolder("/mymusic/flac");
+
+	ui32 timeBattery = 0, volumeBarTime = 0;
+	StatusDisplay = uPL_STATUS_PLAYER;
 	SetEvent(uPL_EVENT_TRACK_PAUSE_PLAY);
 
 	while (1)
@@ -883,8 +977,17 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 		if (state == uPL_PLAY)
 			Play();
 
+		if (qmGetTick() - timeBattery > 1000) {
+			batteryLevel = ReadBatteryLevel();
+			timeBattery = qmGetTick();
+		}
+
+		if (qmGetTick() - volumeBarTick > qcfgVOLUME_BAR_TIMER && flagVolBar)
+		{
+			HideVolumeBar();
+		}
+
 		ButtonsHandle();
-		ReadBatteryLevel();
 		EventHandler();
 	}
 }

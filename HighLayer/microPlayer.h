@@ -22,6 +22,7 @@
 #include	"ff_gen_drv.h"
 
 #include	"GUI.h"
+#include	"rtc.h"
 
 #define		qmCall(method)			(this->*method)()
 
@@ -38,6 +39,7 @@ typedef enum
 	uPL_EVENT_TRACK_BACK			= 0x04,
 	uPL_EVENT_TRACK_NEXT			= 0x08,
 	uPL_EVENT_TRACK_PAUSE_PLAY		= 0x10,
+	uPL_EVENT_TRACK_PAUSE_PLAY_HOLD = 0x12,
 
 }	uPlayerEvent_t;
 
@@ -89,6 +91,13 @@ typedef enum
 	uPL_MODE_REPEAT_PLAYLIST		= 0x04
 
 }	uPlayerPlayMode_t;
+
+
+typedef enum
+{
+	uPL_STATUS_PLAYER					= 0x01,
+	uPL_STATUS_MENU						= 0x02,
+}	uPlayerStatusDisplay_t;
 
 
 typedef struct
@@ -187,6 +196,7 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 		void				OnVolumeUpHold (void *param);
 		void				OnTrackPlayPress (void *param);
 		void				OnTrackPlayHold (void *param);
+		void				OnTrackPlayLastHold(void *param);
 		void				OnTrackBackPress (void *param);
 		void				OnTrackBackHold (void *param);
 		void				OnTrackNextPress (void *param);
@@ -207,6 +217,10 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 		uPlayerStatus_t		Play (void);
 
 		uPlayerStatus_t		Start (void);
+
+		uPlayerStatusDisplay_t StatusDisplay;
+		ui8					selectedFolderIndex;
+		bool				flagok;
 
 };
 

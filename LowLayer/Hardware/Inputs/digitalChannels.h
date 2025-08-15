@@ -52,7 +52,8 @@ typedef struct
 	ui32					pressTime;
 
 	qfButtonHandler_t		OnPress,
-							OnHold;
+							OnHold,
+							OnLastHold;
 
 	void					*pThis;
 

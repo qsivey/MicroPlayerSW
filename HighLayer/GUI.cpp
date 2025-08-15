@@ -10,10 +10,25 @@
 
 #include    "GUI.h"
 
+/* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+ *														   		  Extern
+ */
+extern uint16_t image_data_BR12[];
+extern uint16_t image_data_BR16[];
+extern uint16_t image_data_BR24[];
+extern uint16_t image_data_BR32[];
+extern uint16_t image_data_SF96[];
+extern uint16_t image_data_SF192[];
+extern uint16_t image_data_SF32[];
+extern uint16_t image_data_SF384[];
+extern uint16_t image_data_SF44[];
+extern uint16_t image_data_SF48[];
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														   Class Methods
  */
+
+
 size_t qc_GUI::InputJPEG (JDEC* jd, uint8_t* buff, size_t len)
 {
 	UINT bytesRead = 0;
@@ -81,6 +96,7 @@ int qc_GUI::ScaleJPEG (void *bitmap, JRECT *rect)
 	return 1;
 }
 
+
 bool qc_GUI::RenderJPEG (void)
 {
 	JPEG_Temp->jd.device = (void*)this;
@@ -88,12 +104,50 @@ bool qc_GUI::RenderJPEG (void)
 	JRESULT res = jd_prepare(&JPEG_Temp->jd, InputJPEG, JPEG_Temp->tjdBuff, qcfgTJD_BUFF_SIZE, this);
 
 	if (res == JDR_OK)
+	{
+		flagOutOfImage = false;
 		jd_decomp(&JPEG_Temp->jd, OutputJPEG, 0);
-
+	}
 	else
+	{
+		flagOutOfImage = true;
 		return false;
+	}
 
 	return true;
+}
+
+
+void qc_GUI::MP3MetaInfo(const TCHAR* path){
+	FIL file;
+	if (f_open(&file, path, FA_READ) == FR_OK) {
+		if (parse_mp3_metadata(&file, &mp3_meta) == FR_OK) {
+			mp3_meta.flag = true;
+		}
+		f_close(&file);
+	}
+}
+
+
+void qc_GUI::FlacMetaInfo(const TCHAR* path){
+	FIL file;
+	if (f_open(&file, path, FA_READ) == FR_OK) {
+		if (parse_flac_metadata(&file, &flac_meta) == FR_OK) {
+			flac_meta.flag = true;
+		}
+		f_close(&file);
+	}
+}
+
+
+void qc_GUI::WAVMetaInfo(const TCHAR* path){
+	FIL file;
+	if (f_open(&file, path, FA_READ) == FR_OK) {
+		if (parse_wav_metadata(&file, &wav_meta) == FR_OK) {
+			wav_meta.flag = true;
+		}
+		f_close(&file);
+	}
 }
 
 
@@ -226,13 +280,214 @@ void qc_GUI::HideVolumeBar (void)
 
 void qc_GUI::DrawAttributes (void)
 {
+	if (flac_meta.sampleRate == 44100 ||
+		mp3_meta.sampleRate  == 44100 ||
+		wav_meta.sample_rate == 44100)
+		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF44);
 
-}
-void qc_GUI::DrawDurationBar (void)
-{
+	if (flac_meta.sampleRate == 48000 ||
+		mp3_meta.sampleRate  == 48000 ||
+		wav_meta.sample_rate == 48000)
+		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF48);
 
+	if (flac_meta.sampleRate == 192000 ||
+		mp3_meta.sampleRate  == 192000 ||
+		wav_meta.sample_rate == 192000)
+		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF192);
+
+	if (flac_meta.sampleRate == 32000 ||
+		mp3_meta.sampleRate  == 32000 ||
+		wav_meta.sample_rate == 32000)
+		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF32);
+
+	char batlev[16];
+	batteryLevel *= 0.02454;
+	sprintf(batlev, "%02d%", (int)batteryLevel);
+	ST7789_WriteString(190, 2, batlev, &Font16, WHITE, BLACK);
+
+	ST7789_WriteString(193, 220, "pause", &Font16, WHITE, BLACK);
 }
+
+
 void qc_GUI::PrintTrackInfo (void)
 {
+	ST7789_FillColor(BLACK);
 
+	/* flac */
+	if (flac_meta.flag) ST7789_WriteString(10, 195, flac_meta.title, &Font20, WHITE, BLACK);
+	if (flac_meta.flag) ST7789_WriteString(10, 220, flac_meta.artist, &Font16, WHITE, BLACK);
+
+	/* mp3 */
+	if (mp3_meta.flag) ST7789_WriteString(10, 195, mp3_meta.title, &Font20, WHITE, BLACK);
+	if (mp3_meta.flag) ST7789_WriteString(10, 220, mp3_meta.artist, &Font16, WHITE, BLACK);
+
+	/* wav */
+	if (wav_meta.flag) ST7789_WriteString(10, 195, wav_meta.title, &Font20, WHITE, BLACK);
+	if (wav_meta.flag) ST7789_WriteString(10, 220, wav_meta.artist, &Font16, WHITE, BLACK);
 }
+
+
+void qc_GUI::PrintTrackPicture(const TCHAR* path, char original_path)
+{
+	char cachePathBuf [10] = { 0 };
+	JPEG_Temp = qmCreate(qsJPEG_t);
+
+	if (f_open(&JPEG_Temp->file, path, FA_READ) == FR_OK) {
+
+	        RenderJPEG();
+
+	        if (!flagOutOfImage) ST7789_DrawImage(0, 0, 240, 240, displayBuffer);
+
+			CacheDisplay(cachePathBuf);
+
+			f_chdir(&original_path);
+
+	    f_close(&JPEG_Temp->file);
+	}
+	qmFree(JPEG_Temp);
+}
+
+
+void qc_GUI::PrintTrackTime (void)
+{
+	float duration_sec = 0;
+	ui32 seconds = 0, minutes = 0;
+	char timeStr[16];
+
+	if (flac_meta.flag || mp3_meta.flag || wav_meta.flag) {
+
+		if (flac_meta.flag) duration_sec = (float)flac_meta.totalSamples / flac_meta.sampleRate;
+		if (mp3_meta.flag)  duration_sec = mp3_meta.duration_sec; //not valid
+		if (wav_meta.flag)  duration_sec = (float)wav_meta.data_size    / wav_meta.byte_rate; //not valid
+
+		startTime = qmGetTick();
+		seconds = (ui32)duration_sec;
+		minutes = seconds / 60;
+		seconds %= 60;
+
+		sprintf(timeStr, "%02d:%02d", minutes, seconds);
+		ST7789_WriteString(193, 220, timeStr, &Font16, WHITE, BLACK);
+	}
+}
+
+
+void qc_GUI::PrintTrackCurrentTime(void)
+{
+	ui32 seconds = 0, minutes = 0;
+	char timeStr[16];
+	ui32 curTime = (qmGetTick() - startTime) / 1000;
+
+	seconds = curTime;
+	minutes = seconds / 60;
+	seconds %= 60;
+
+	sprintf(timeStr, "%02d:%02d", minutes, seconds);
+	ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
+}
+
+
+void qc_GUI::InitMenu(ui8 selected)
+{
+	if (selected == 0){
+		strcpy(menu.highlayer[0], "Font");
+		strcpy(menu.highlayer[1], "Folders");
+		strcpy(menu.highlayer[2], "Language");
+		strcpy(menu.highlayer[3], "Sleep mode");
+		strcpy(menu.highlayer[4], "About/Help");
+		strcpy(menu.lang[2],"Back");
+		strcpy(about,"MicroPlayer project GitHub: qsivey, Nik125Y Telegram: @qsivey, @Nik125Y Email: qsivey@gmail.com, topnikm@gmail.com");
+	}
+	if (selected == 1){
+		strcpy(menu.highlayer[0], "Шрифт");
+		strcpy(menu.highlayer[1], "Папки");
+		strcpy(menu.highlayer[2], "Язык");
+		strcpy(menu.highlayer[3], "Режим сна");
+		strcpy(menu.highlayer[4], "О нас/Помощь");
+		strcpy(menu.lang[2],"Назад");
+		strcpy(about,"Проект Микроплеер GitHub: qsivey, Nik125Y Телеграм: @qsivey, @Nik125Y Почта: qsivey@gmail.com, topnikm@gmail.com");
+	}
+	strcpy(menu.lang[0],"English");
+	strcpy(menu.lang[1],"Русский");
+}
+
+
+void qc_GUI::DrawMenu(ui8 selected){
+	ST7789_FillColor(BLACK);
+
+	for (uint8_t i = 0; i < MAX_COMPONENTS; i++) {
+		uint16_t color = (i == selected) ? YELLOW : WHITE;
+		ST7789_WriteString(5, i * 23, menu.highlayer[i], &Font20, color, BLACK);
+	}
+}
+
+
+void qc_GUI::DrawFolderMenu(ui8 selected)
+{
+	ST7789_FillColor(BLACK);
+
+	for (uint8_t i = 0; i < folderCount; i++) {
+		uint16_t color = (i == selected) ? YELLOW : WHITE;
+		ST7789_WriteString(5, i * 23, folders[i], &Font20, color, BLACK);
+	}
+}
+
+
+void qc_GUI::Language(ui8 selected){
+	ST7789_FillColor(BLACK);
+	for (uint8_t i = 0; i < 3; i++) {
+		uint16_t color = (i == (selected)) ? YELLOW : WHITE;
+		ST7789_WriteString(5, i * 23, menu.lang[i], &Font20, color, BLACK);
+	}
+}
+
+
+void qc_GUI::SelectLang(ui8 selected)
+{
+	if (selected == 2){
+		menu.where = 0;
+		menu.subindex = 0;
+		DrawMenu(menu.index);
+	}
+	else {
+		InitMenu(selected);
+		Language(selected);
+	}
+}
+
+
+void qc_GUI::Transition(ui8 selected)
+{
+	switch (selected)
+	{
+		case 0:
+
+			break;
+		case 1:
+			menu.where = 1;
+			menu.subindex = 0;
+			DrawFolderMenu(menu.subindex);
+			break;
+		case 2:
+			menu.where = 2;
+			menu.subindex = 0;
+			Language(menu.subindex);
+			break;
+		case 3:
+			break;
+		case 4:
+			menu.where = 4;
+			About();
+			break;
+		default :
+			break;
+	}
+}
+
+
+void qc_GUI::About(void)
+{
+	ST7789_FillColor(BLACK);
+	ST7789_WriteString(0, 4, about, &Font20, WHITE, BLACK);
+	ST7789_WriteString(5, 200, menu.lang[2], &Font20, YELLOW, BLACK);
+}
+

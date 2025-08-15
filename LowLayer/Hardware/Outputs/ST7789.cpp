@@ -434,17 +434,16 @@ void qcST7789::ST7789_Init (void)
 			WriteSmallData(data[i]);
 	}
 
-    WriteCommand (ST7789_INVON);		//	Inversion ON
+    WriteCommand (ST7789_INVON);	//	Inversion ON
 	WriteCommand (ST7789_SLPOUT);	//	Out of sleep mode
-  	WriteCommand (ST7789_NORON);		//	Normal Display on
+  	WriteCommand (ST7789_NORON);	//	Normal Display on
   	WriteCommand (ST7789_DISPON);	//	Main screen turned on
 
 	qmDelayMs(50);
 
 	ST7789_FillColor(BLACK);
 
-	ST7789_WriteString(2, 2, (char*)"Hello, qsivey!", &Font20, GREEN, BLACK);
-	ST7789_WriteString(2, 30, (char*)"Display is ready...", &Font20, GREEN, BLACK);
+	/* Uncomment the code below to check the screen FPS*/
 
 //	ui16 FPS = ST7789_TestFPS();
 //
@@ -456,18 +455,14 @@ void qcST7789::ST7789_Init (void)
 //
 //	ST7789_WriteString(2, 2, str, &Font20, GREEN, BLACK);
 //	qmDelayMs(3000);
+
 }
-
-
-void qcST7789::ST7789_FillColor (ui16 color)
+#pragma GCC optimize ("O0")
+void qcST7789::ST7789_InvertColors (ui8 invert)
 {
-	SetAddressWindow(0, 0, ST7789_WIDTH - 1, ST7789_HEIGHT - 1);
+	displayCheckTxMode(TXDMAM_DYNAMIC_8)
 
-	displayCheckTxMode(TXDMAM_STATIC_16)
-
-	ui8 color8 [] = { (ui8)(color & 0xFF), (ui8)(color >> 8) };
-
-	WriteData(color8, ST7789_WIDTH * ST7789_HEIGHT);
+	WriteCommand(invert ? 0x21 /* INVON */ : 0x20 /* INVOFF */);
 }
 
 
@@ -480,6 +475,19 @@ void qcST7789::ST7789_DrawPixel (ui16 x, ui16 y, ui16 color)
 	WriteData((ui8*)&color, 1);
 }
 
+#pragma GCC optimize ("O3")
+void qcST7789::ST7789_FillColor (ui16 color)
+{
+	SetAddressWindow(0, 0, ST7789_WIDTH - 1, ST7789_HEIGHT - 1);
+
+	displayCheckTxMode(TXDMAM_STATIC_16)
+
+	ui8 color8 [] = { (ui8)(color & 0xFF), (ui8)(color >> 8) };
+
+	WriteData(color8, ST7789_WIDTH * ST7789_HEIGHT);
+}
+
+#pragma GCC optimize ("O0")
 
 void qcST7789::ST7789_DrawLine (ui16 x0, ui16 y0, ui16 x1, ui16 y1, ui16 color)
 {
@@ -554,6 +562,20 @@ void qcST7789::ST7789_DrawRectangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 th
 }
 
 
+void qcST7789::ST7789_DrawFilledRectangle (ui16 x, ui16 y, ui16 w, ui16 h, ui16 color)
+{
+	displayAssert(x, y);
+
+	displayCheckTxMode(TXDMAM_STATIC_16)
+
+	SetAddressWindow(x, y, x + w - 1, y + h - 1);
+
+	ui8 color8 [] = { (ui8)(color >> 8), (ui8)(color & 0xFF) };
+
+	WriteData(color8, w * h);
+}
+
+
 void qcST7789::ST7789_DrawCircle (ui16 x0, ui16 y0, ui8 r, ui16 color)
 {
 	int16_t f = 1 - r;
@@ -590,107 +612,37 @@ void qcST7789::ST7789_DrawCircle (ui16 x0, ui16 y0, ui8 r, ui16 color)
 }
 
 
-void qcST7789::ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data)
+void qcST7789::ST7789_DrawFilledCircle (i16 x0, i16 y0, i16 r, ui16 color)
 {
-	displayAssert(x, y);
+	int16_t f = 1 - r;
+	int16_t ddF_x = 1;
+	int16_t ddF_y = -2 * r;
+	int16_t x = 0;
+	int16_t y = r;
 
-	if ((x + w - 1) >= ST7789_WIDTH)
-		return;
+	ST7789_DrawPixel(x0, y0 + r, color);
+	ST7789_DrawPixel(x0, y0 - r, color);
+	ST7789_DrawPixel(x0 + r, y0, color);
+	ST7789_DrawPixel(x0 - r, y0, color);
+	ST7789_DrawLine(x0 - r, y0, x0 + r, y0, color);
 
-	if ((y + h - 1) >= ST7789_HEIGHT)
-		return;
-
-	displayCheckTxMode(TXDMAM_DYNAMIC_8)
-
-	SetAddressWindow(x, y, x + w - 1, y + h - 1);
-
-	WriteData((ui8*)data, w * h * 2);
-}
-
-
-void qcST7789::ST7789_InvertColors (ui8 invert)
-{
-	displayCheckTxMode(TXDMAM_DYNAMIC_8)
-
-	WriteCommand(invert ? 0x21 /* INVON */ : 0x20 /* INVOFF */);
-}
-
-
-void qcST7789::ST7789_WriteChar (ui16 x, ui16 y, char ch, tFont *font, ui16 color, ui16 bgColor)
-{
-	displayCheckTxMode(TXDMAM_STATIC_16)
-
-	SetAddressWindow(x, y, x + font->chars[(ch-32)].image->width - 1, y + font->chars[(ch-32)].image->height - 1);
-
-	int a = 0;
-	bool even = false;
-	ui16 chrome, pixel;
-
-	for (int i = 0; i < font->chars[(ch-32)].image->height; i++)
-		for (int k = 0; k < font->chars[(ch-32)].image->width; k++)
-		{
-			if (even)
-				chrome = (font->chars[(ch-32)].image->data[a] & 0x0F);
-
-			else
-				chrome = (font->chars[(ch-32)].image->data[a] >> 4) & 0x0F;
-
-			ui8 alpha = chrome ? ((chrome + 1) * 4) - 1 : 0;
-
-			if (alpha > 0)
-			{
-				pixel = Paint(bgColor, color, alpha);
-				WriteData((ui8*)&pixel, 1);
-			}
-
-			else
-				WriteData((ui8*)&color, 1);
-
-			if (even)
-				a++;
-
-			even = !even;
+	while (x < y)
+	{
+		if (f >= 0) {
+			y--;
+			ddF_y += 2;
+			f += ddF_y;
 		}
-}
+		x++;
+		ddF_x += 2;
+		f += ddF_x;
 
+		ST7789_DrawLine(x0 - x, y0 + y, x0 + x, y0 + y, color);
+		ST7789_DrawLine(x0 + x, y0 - y, x0 - x, y0 - y, color);
 
-void qcST7789::ST7789_WriteString (ui16 x, ui16 y, char *str, tFont *font, ui16 color, ui16 bgColor)
-{
-	displayCheckTxMode(TXDMAM_STATIC_16)
-
-	while (*str) {
-		if (x + font->chars[(*str-32)].image->width >= ST7789_WIDTH) {
-			x = 0;
-			y += font->chars[(*str-32)].image->height;
-			if (y + font->chars[(*str-32)].image->height >= ST7789_HEIGHT) {
-				break;
-			}
-
-			if (*str == ' ') {
-				// skip spaces in the beginning of the new line
-				str++;
-				continue;
-			}
-		}
-
-		ST7789_WriteChar(x, y, *str, font, color, bgColor);
-		x += font->chars[(*str-32)].image->width;
-		str++;
+		ST7789_DrawLine(x0 + y, y0 + x, x0 - y, y0 + x, color);
+		ST7789_DrawLine(x0 + y, y0 - x, x0 - y, y0 - x, color);
 	}
-}
-
-
-void qcST7789::ST7789_DrawFilledRectangle (ui16 x, ui16 y, ui16 w, ui16 h, ui16 color)
-{
-	displayAssert(x, y);
-
-	displayCheckTxMode(TXDMAM_STATIC_16)
-
-	SetAddressWindow(x, y, x + w - 1, y + h - 1);
-
-	ui8 color8 [] = { (ui8)(color >> 8), (ui8)(color & 0xFF) };
-
-	WriteData(color8, w * h);
 }
 
 
@@ -764,37 +716,115 @@ void qcST7789::ST7789_DrawFilledTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui
 }
 
 
-void qcST7789::ST7789_DrawFilledCircle (i16 x0, i16 y0, i16 r, ui16 color)
+void qcST7789::ST7789_WriteChar(ui16 x, ui16 y, const tImage* img, ui16 color, ui16 bgColor)
 {
-	int16_t f = 1 - r;
-	int16_t ddF_x = 1;
-	int16_t ddF_y = -2 * r;
-	int16_t x = 0;
-	int16_t y = r;
+	displayCheckTxMode(TXDMAM_STATIC_16);
 
-	ST7789_DrawPixel(x0, y0 + r, color);
-	ST7789_DrawPixel(x0, y0 - r, color);
-	ST7789_DrawPixel(x0 + r, y0, color);
-	ST7789_DrawPixel(x0 - r, y0, color);
-	ST7789_DrawLine(x0 - r, y0, x0 + r, y0, color);
+	SetAddressWindow(x, y, x + img->width - 1, y + img->height - 1);
 
-	while (x < y)
-	{
-		if (f >= 0) {
-			y--;
-			ddF_y += 2;
-			f += ddF_y;
+	int a = 0;
+	bool even = false;
+	uint16_t chrome, pixel;
+
+	for (int i = 0; i < img->height; i++) {
+		for (int k = 0; k < img->width; k++) {
+
+			if (even)
+				chrome = img->data[a] & 0x0F;
+			else
+				chrome = (img->data[a] >> 4) & 0x0F;
+
+			uint8_t alpha = chrome ? ((chrome + 1) * 4) - 1 : 0;
+
+			if (alpha > 0)
+				pixel = Paint(bgColor, color, alpha);
+			else
+				pixel = color;
+
+			WriteData((uint8_t*)&pixel, 1);
+
+			if (even)
+				a++;
+
+			even = !even;
 		}
-		x++;
-		ddF_x += 2;
-		f += ddF_x;
-
-		ST7789_DrawLine(x0 - x, y0 + y, x0 + x, y0 + y, color);
-		ST7789_DrawLine(x0 + x, y0 - y, x0 - x, y0 - y, color);
-
-		ST7789_DrawLine(x0 + y, y0 + x, x0 - y, y0 + x, color);
-		ST7789_DrawLine(x0 + y, y0 - x, x0 - y, y0 - x, color);
 	}
+}
+
+
+void qcST7789::ST7789_WriteString(ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor)
+{
+    displayCheckTxMode(TXDMAM_STATIC_16);
+
+    while (*str) {
+        uint32_t code = utf8_merge_code(&str);
+        const tChar *ch = find_char(font, code);
+        if (!ch || !ch->image) continue;
+
+        const tImage *img = ch->image;
+
+        if (x + img->width >= ST7789_WIDTH) {
+            x = 0;
+            y += img->height;
+            if (y + img->height >= ST7789_HEIGHT) break;
+        }
+
+        ST7789_WriteChar(x, y, ch->image, color, bgColor);
+        x += ch->image->width;
+    }
+}
+
+
+void qcST7789::ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data)
+{
+	displayAssert(x, y);
+
+	if ((x + w - 1) >= ST7789_WIDTH)
+		return;
+
+	if ((y + h - 1) >= ST7789_HEIGHT)
+		return;
+
+	displayCheckTxMode(TXDMAM_DYNAMIC_8)
+
+	SetAddressWindow(x, y, x + w - 1, y + h - 1);
+
+	WriteData((ui8*)data, w * h * 2);
+}
+
+
+void qcST7789::ST7789_DrawPartofImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data)
+{
+	/* function for array from LCD Image Conventor */
+
+	displayAssert(x, y);
+
+	if ((x + w - 1) >= ST7789_WIDTH)
+		return;
+	if ((y + h - 1) >= ST7789_HEIGHT)
+		return;
+
+	displayCheckTxMode(TXDMAM_DYNAMIC_8)
+
+	SetAddressWindow(x, y, x + w - 1, y + h - 1);
+
+	ui16 mas [w * h];
+	int k = 0;
+
+	/* for casual array do not unite adjacent elements */
+
+	for (ui32 i = 0; i < (w * 2 * h); i += w * 2)
+	{
+
+		for (ui32 j = i; j < i + w * 2; j += 2 )
+			{
+			mas[k] = __builtin_bswap16(((ui16)(data[j] << 8) & 0xFF00) | (ui16)data[j + 1]);
+
+			k++;
+			}
+	}
+
+	WriteData((ui8*)mas, sizeof(ui16) * w * h);
 }
 
 
@@ -810,4 +840,67 @@ ui32 qcST7789::ST7789_TestFPS (void)
 	}
 
 	return FPS;
+}
+
+
+void qcST7789::ST7789_Rainbow(void){
+	int a = rand() % 7 + 1;
+	switch(a){
+	case 1:
+		ST7789_FillColor(RED);
+		break;
+	case 2:
+		ST7789_FillColor(ORANGE);
+		break;
+	case 3:
+		ST7789_FillColor(YELLOW);
+		break;
+	case 4:
+		ST7789_FillColor(GREEN);
+		break;
+	case 5:
+		ST7789_FillColor(LIGHTBLUE);
+		break;
+	case 6:
+		ST7789_FillColor(BLUE);
+		break;
+	case 7:
+		ST7789_FillColor(VIOLET);
+		break;
+	}
+}
+
+uint32_t qcST7789::utf8_merge_code(const char **ptr) {
+    const uint8_t *s = (const uint8_t *)(*ptr);
+
+    uint32_t code = 0;
+
+    if (s[0] < 0x80) {
+        // английский
+        code = s[0];
+        *ptr += 1;
+    } else if ((s[0] & 0xE0) == 0xC0) {
+        // кириллица
+        code = (s[0] << 8) | s[1];
+        *ptr += 2;
+    } else if ((s[0] & 0xF0) == 0xE0) {
+        //  №
+        code = (s[0] << 16) | (s[1] << 8) | s[2];
+        *ptr += 3;
+    } else {
+        code = '?';
+        *ptr += 1;
+    }
+
+    return code;
+}
+
+
+const tChar* qcST7789::find_char(const tFont* font, uint32_t code) {
+    for (int i = 0; i < font->length; ++i) {
+        if (font->chars[i].code == code) {
+            return &font->chars[i];
+        }
+    }
+    return NULL;
 }

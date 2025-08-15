@@ -22,7 +22,7 @@ void qcAnalogChannels::ADC_Init (void)
 
 	ADC_HANDLE.Instance = ADC_INSTANCE;
 
-	ADC_HANDLE.Init.ClockPrescaler			= ADC_CLOCKPRESCALER_PCLK_DIV2;
+	ADC_HANDLE.Init.ClockPrescaler			= ADC_CLOCKPRESCALER_PCLK_DIV1;
 	ADC_HANDLE.Init.Resolution				= ADC_RESOLUTION_12B;
 	ADC_HANDLE.Init.ExternalTrigConvEdge	= ADC_EXTERNALTRIGCONVEDGE_NONE;
 	ADC_HANDLE.Init.ExternalTrigConv		= ADC_SOFTWARE_START;
@@ -54,7 +54,7 @@ void qcAnalogChannels::ADC_Init (void)
 }
 
 
-void qcAnalogChannels::ReadBatteryLevel (void)
+ui16 qcAnalogChannels::ReadBatteryLevel (void)
 {
 	if (HAL_ADC_Start(&ADC_HANDLE) != HAL_OK)
 		HardwareErrorHandler();
@@ -62,5 +62,9 @@ void qcAnalogChannels::ReadBatteryLevel (void)
 	if (HAL_ADC_PollForConversion(&ADC_HANDLE, 10) != HAL_OK)
 		HardwareErrorHandler();
 
-	batteryLevel = HAL_ADC_GetValue(&ADC_HANDLE);
+	ui16 batteryLevel = HAL_ADC_GetValue(&ADC_HANDLE);
+
+	HAL_ADC_Stop(&ADC_HANDLE);
+
+	return batteryLevel;
 }

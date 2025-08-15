@@ -99,7 +99,11 @@ void qcDigitalChannels::ButtonsHandle (void)
 					Buttons[i].OnHold(Buttons[i].pThis);
 
 				else
+				{
+					Buttons[i].OnLastHold(Buttons[i].pThis);
 					Buttons[i].status = BS_RELEASED;
+				}
+
 
 				break;
 			}
