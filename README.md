@@ -1,1 +1,3 @@
-<img src="путь к файлу" alt="music"><img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=500&duration=4000&pause=500&color=0EB1F7&width=435&lines=MicroPlayer;Music+is+always+near" alt="Typing SVG" /></a>
+<img src="https://github.com/qsivey/MicroPlayerSW/tree/master/Middleware/graphics/Resources/music.svg" alt="music"> 
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=500&duration=4000&pause=500&color=0EB1F7&width=435&lines=MicroPlayer;Music+is+always+near" 
+  alt="Typing SVG" />
