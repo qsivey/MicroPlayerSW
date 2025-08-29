@@ -11,7 +11,7 @@
 #include	"microPlayer.h"
 
 
-int main(void)
+int main (void)
 {
 	uPlayer.Start();
 }

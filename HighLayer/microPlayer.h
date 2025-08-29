@@ -96,7 +96,8 @@ typedef enum
 typedef enum
 {
 	uPL_STATUS_PLAYER					= 0x01,
-	uPL_STATUS_MENU						= 0x02,
+	uPL_STATUS_MENU						= 0x02
+
 }	uPlayerStatusDisplay_t;
 
 
@@ -151,6 +152,8 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 		void				*track;
 		char				*trackPath;
 		ui16				framesRead;
+		ui32				totalFramesRead;
+		ui32				totalFrames;
 
 		qsTrackMetadata_t	*trackMeta;
 

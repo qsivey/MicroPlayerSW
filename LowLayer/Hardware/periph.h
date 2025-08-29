@@ -24,6 +24,16 @@
 
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+ *													   RTC Configuration
+ */
+/* -------------------------------------------------
+ * RTC Module Config
+ */
+#define		RTC_HANDLE				qrtc
+#define		RTC_INSTANCE			RTC
+
+
+/* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *													   ADC Configuration
  */
 /* -------------------------------------------------
@@ -246,6 +256,9 @@ class qcPeripheral
 		/* RCC Peripheral Clock objects */
 		RCC_PeriphCLKInitTypeDef
 							PeriphClkInitStruct;
+
+		/* RTC handle objects */
+		RTC_HandleTypeDef 	RTC_HANDLE;
 
 		/* ADC handle objects */
 		ADC_HandleTypeDef	ADC_HANDLE;

@@ -752,7 +752,7 @@ void qcST7789::ST7789_WriteChar(ui16 x, ui16 y, const tImage* img, ui16 color, u
 }
 
 
-void qcST7789::ST7789_WriteString(ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor)
+void qcST7789::ST7789_WriteString (ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor)
 {
     displayCheckTxMode(TXDMAM_STATIC_16);
 
@@ -843,7 +843,8 @@ ui32 qcST7789::ST7789_TestFPS (void)
 }
 
 
-void qcST7789::ST7789_Rainbow(void){
+void qcST7789::ST7789_Rainbow (void)
+{
 	int a = rand() % 7 + 1;
 	switch(a){
 	case 1:
@@ -870,7 +871,8 @@ void qcST7789::ST7789_Rainbow(void){
 	}
 }
 
-uint32_t qcST7789::utf8_merge_code(const char **ptr) {
+uint32_t qcST7789::utf8_merge_code (const char **ptr)
+{
     const uint8_t *s = (const uint8_t *)(*ptr);
 
     uint32_t code = 0;
@@ -896,11 +898,11 @@ uint32_t qcST7789::utf8_merge_code(const char **ptr) {
 }
 
 
-const tChar* qcST7789::find_char(const tFont* font, uint32_t code) {
-    for (int i = 0; i < font->length; ++i) {
-        if (font->chars[i].code == code) {
+const tChar* qcST7789::find_char (const tFont *font, int32_t code)
+{
+    for (int i = 0; i < font->length; ++i)
+        if (font->chars[i].code == code)
             return &font->chars[i];
-        }
-    }
+
     return NULL;
 }

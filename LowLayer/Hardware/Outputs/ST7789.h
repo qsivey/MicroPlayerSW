@@ -161,7 +161,7 @@
  *If you want to use another color, you can choose one in RGB565 format.
  */
 
-#define WHITE       0xFFFF
+#define	WHITE       0xFFFF
 #define BLACK       0x0000
 #define BLUE        0x001F
 #define RED         0xF800
@@ -179,7 +179,6 @@
 #define LIGHTBLUE   0X7D7C
 #define GRAYBLUE    0X5458
 #define	ORANGE 		0XE480
-#define LIGHTBLUE	0X065C
 #define VIOLET		0X601F
 #define LIGHTGREEN  0X841F
 #define LGRAY       0XC618
@@ -248,24 +247,35 @@ typedef enum
 }	qeTxDMA_Mode_t;
 
 
-typedef struct {
-    ui16 x_start, x_end, y;
-    const char *str;
-    tFont *font;
-    ui16 color, bgColor;
+typedef struct
+{
+    ui16		x_start,
+				x_end,
+				y;
 
-    ui16 total_width;
-    ui16 scroll;
-    ui8 str_len;
-    ui16 char_widths[256];
-} ScrollTextState;
+    const char	*str;
+
+    tFont		*font;
+
+    ui16		color,
+				bgColor;
+
+    ui16		total_width;
+    ui16		scroll;
+    ui8			str_len;
+
+    ui16		char_widths [256];
+
+}	ScrollTextState;
 
 
-typedef struct {
-	ui16 *buffer;
-    ui16 buf_width;
-    ui16 height;
-} RenderedText;
+typedef struct
+{
+	ui16	*buffer;
+    ui16	buf_width;
+    ui16	height;
+
+}	RenderedText;
 
 
 class qcST7789 : virtual public qcPeripheral
@@ -329,8 +339,8 @@ class qcST7789 : virtual public qcPeripheral
 		void				ST7789_Rainbow (void);
 
 		/* auxiliary functions for char */
-		uint32_t			utf8_merge_code(const char **ptr);
-		const tChar*		find_char(const tFont* font, uint32_t code);
+		uint32_t			utf8_merge_code (const char **ptr);
+		const tChar*		find_char (const tFont *font, int32_t code);
 
 };
 

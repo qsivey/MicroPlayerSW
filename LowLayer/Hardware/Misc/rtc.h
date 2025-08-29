@@ -8,35 +8,35 @@
  *	____________________________________________________________________
  */
 
-#ifndef		MISC_REALTIME_CLOCK_H_
-#define		MISC_REALTIME_CLOCK_H_
+#ifndef		MISC_RTC_H_
+#define		MISC_RTC_H_
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 
 #include	"periph.h"
 
-typedef struct {
+
+typedef struct
+{
     RTC_TimeTypeDef	startTime;
-    uint32_t 		totalDurationSec;
+    ui32			totalDurationSec;
+
 } player_timer_t;
 
-class RealTimeClock
+
+class qcRealTimeClock : virtual public qcPeripheral
 {
-	private:
-
-		RTC_HandleTypeDef 	hrtc;
-
 	public :
 
 		player_timer_t 		playerTime;
 
 		void				RTC_Init (void);
-		void				StartTimer(char* str);
-		ui32				GetElapsedTime(void);
+		void				StartTimer (void);
+		ui32				GetElapsedTime (void);
 
 };
 
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */
 
-#endif		/* MISC_REALTIME_CLOCK_H_ */
+#endif		/* MISC_RTC_H_ */

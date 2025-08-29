@@ -21,7 +21,6 @@
 
 #include	"printf.h"
 #include    "parse.h"
-#include	"tjpgd.h"
 #include	"rtc.h"
 
 /* Base GUI parameters */
@@ -55,37 +54,6 @@
 #define     MAX_LANGUAGES  3 //2 languages + button "back"
 
 
-#pragma pack(push, 1)
-
-typedef struct
-{
-	ui16			bfType;							// 'BM'
-	ui32			bfSize;
-	ui16			bfReserved1;
-	ui16			bfReserved2;
-	ui32			bfOffBits;
-
-}	qsBMP_Header_t;
-
-
-typedef struct
-{
-	ui32			biSize;
-    i32				biWidth;
-    i32				biHeight;
-    ui16			biPlanes;
-    ui16			biBitCount;
-    ui32			biCompression;
-    ui32			biSizeImage;
-    i32				biXPelsPerMeter;
-    i32				biYPelsPerMeter;
-    ui32			biClrUsed;
-    ui32			biClrImportant;
-
-}	qsBMP_InfoHeader_t;
-
-#pragma pack(pop)
-
 typedef struct {
 	bool 			flag;
     // STREAMINFO
@@ -117,16 +85,8 @@ typedef struct {
 	// VORBIS_COMMENT
     char 			title[64];
     char 			artist[64];
+
 } 	qcMP3_metadata_t;
-
-
-typedef struct
-{
-	FIL		file;
-	JDEC	jd;
-	ui8		tjdBuff [qcfgTJD_BUFF_SIZE];
-
-}	qsJPEG_t;
 
 
 typedef struct{
@@ -140,7 +100,7 @@ typedef struct{
 }	qsmenu_t;
 
 
-class qc_GUI : public qcST7789, public RealTimeClock, public qcParse
+class qc_GUI : public qcST7789, public qcRealTimeClock, public qcParse
 {
 	public :
 
@@ -149,24 +109,6 @@ class qc_GUI : public qcST7789, public RealTimeClock, public qcParse
 
 		/* Text */
 		char				printBuf [qcfgPRINT_BUF_SIZE];
-
-		/* JPEG */
-		qsJPEG_t			*JPEG_Temp;
-		bool				flagOutOfImage;
-
-		static size_t		InputJPEG (JDEC* jd, uint8_t* buff, size_t len);
-		static int			OutputJPEG (JDEC *jd, void *bitmap, JRECT *rect);
-		int					ScaleJPEG (void *bitmap, JRECT *rect);
-		bool				RenderJPEG (void);
-
-		/* Meta */
-
-		void				FlacMetaInfo(const TCHAR* path);
-		void				MP3MetaInfo(const TCHAR* path);
-		void				WAVMetaInfo(const TCHAR* path);
-
-		/* Cache */
-		void				CacheDisplay (const char *filename);
 
 		/* First panel methods */
 		/* First level */

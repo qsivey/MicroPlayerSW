@@ -23,8 +23,9 @@ void qcPeripheral::SystemClockConfig (void)
 
 	while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_HSE;
 	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.LSIState = RCC_LSI_ON;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLL1_SOURCE_HSE;
 	RCC_OscInitStruct.PLL.PLLM = 1;

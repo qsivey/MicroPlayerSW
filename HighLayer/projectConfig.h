@@ -53,7 +53,8 @@
 #define		qcfgMIN_VOLUME			0				// 0 --> 15
 #define		qcfgINITIAL_VOLUME		14				// 0 --> 16
 
-#define		qcfgCACHE_IMG_PATH		"0:/cache/img"
+#define		qcfgCACHE_PATH			"0:/cache"
+#define		qcfgCACHE_IMG_PATH		qcfgCACHE_PATH "/img"
 
 
 /* = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = */

@@ -24,7 +24,6 @@ qc_uPlayer uPlayer;
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														Static Functions
  */
-
 static size_t DrLibRead (void *pUserData, void *pBufferOut, size_t bytesToRead)
 {
     FIL *file = (FIL*)pUserData;
@@ -102,14 +101,17 @@ uPlayerStatus_t qc_uPlayer::OpenMP3 (void)
 
 uPlayerStatus_t qc_uPlayer::OpenFLAC (void)
 {
-	FlacMetaInfo(trackPath);
-	PrintTrackInfo();
-	PrintTrackTime();
+//	FlacMetaInfo();
+//	PrintTrackInfo();
+//	PrintTrackTime();
 
 	track = drflac_open(DrLibRead, DrFLAC_Seek, DrLibTell, &file, NULL);
 
 	PCM5142_SetSampleRate(((drflac*)track)->sampleRate);
 	PCM5142_SetBitRate(((drflac*)track)->bitsPerSample);
+
+	totalFrames = ((drflac*)track)->totalPCMFrameCount / ((drflac*)track)->sampleRate;
+	totalFramesRead = 0;
 
 	if (((drflac*)track)->bitsPerSample <= 16)
 	{
@@ -188,6 +190,12 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_16 (void)
 		else
 			framesRead = drflac_read_pcm_frames_s16((drflac*)track, qcfgPCM_BUFFER_SIZE / 4,
 					(drflac_int16*)(((drflac_int16*)PCM_Buffer) + (qcfgPCM_BUFFER_SIZE / 2)));
+
+		totalFramesRead += framesRead;
+
+		ui32 a = totalFramesRead / ((drflac*)track)->sampleRate;
+
+		unused_(a);
 
 		bufferOffset = BUFFER_OFFSET_NONE;
 	}
@@ -300,6 +308,9 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	SystemClockConfig();
 	PeriphCommonClockConfig();
 
+	/* RealTimeClock init*/
+	RTC_Init();
+
 	/* Enable all GPIOs */
 	AllGPIO_ClockEnable();
 
@@ -311,9 +322,6 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 
 	/* All buttons init */
 	ButtonsInit();
-
-	/* RealTimeClock init*/
-	//RTC_Init();
 
 	/* Menu init*/
 	InitMenu(0);
@@ -390,6 +398,9 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	/* PCM5142 init */
 	PCM5142_Init();
 
+	/*  */
+	CreateImgCacheTable();
+
 	/* Service variable init */
 	currentCodec = uPLFC_NONE;
 	trackNumber = 0;
@@ -402,11 +413,13 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	error = uPL_ERROR_NONE;
 	state = uPL_STOP;
 
+	memset(currentPath, 0, sizeof(currentPath));
+
 	return uPL_OK;
 }
 
 
-uPlayerStatus_t qc_uPlayer::InitFolder(const char *folder)
+uPlayerStatus_t qc_uPlayer::InitFolder (const char *folder)
 {
 	ui16 fileNameLength = 0;
 	ui32 totalFileNameLength = 0;
@@ -414,6 +427,13 @@ uPlayerStatus_t qc_uPlayer::InitFolder(const char *folder)
 	totalTrackNumber = 0;
 
 	FRESULT res = f_chdir(folder);
+
+	if (res == FR_OK)
+		memcpy(currentPath, folder, strlen(folder));
+
+	else
+		return uPL_ERROR;
+
 	res = f_findfirst(&fatFS.dir, &fatFS.fno, folder, "*");
 
 	/* First pass: count valid audio files */
@@ -436,6 +456,8 @@ uPlayerStatus_t qc_uPlayer::InitFolder(const char *folder)
 
 		res = f_findnext(&fatFS.dir, &fatFS.fno);
 	}
+
+	f_closedir(&fatFS.dir);
 
 	fatFS.playlistTrackNames = qmCreateArr(char, totalFileNameLength);
 	fatFS.playlistTrackNamePointers = qmCreateArr(ui16, totalTrackNumber * 2 + 2);
@@ -472,7 +494,16 @@ uPlayerStatus_t qc_uPlayer::InitFolder(const char *folder)
 		res = f_findnext(&fatFS.dir, &fatFS.fno);
 	}
 
+	f_closedir(&fatFS.dir);
+
 	fatFS.playlistTrackNamePointers[i] = totalFileNameLength;
+
+	/* Extract all images from folder */
+//	for (; trackNumber < totalTrackNumber; trackNumber++)
+//	{
+//		trackPath = &fatFS.playlistTrackNames[fatFS.playlistTrackNamePointers[trackNumber]];
+//		ExtractMetaPicture(trackPath);
+//	}
 
 	return uPL_OK;
 }
@@ -570,7 +601,6 @@ uPlayerStatus_t qc_uPlayer::InitCodec (void)
 	HAL_I2S_Transmit_DMA(&DAC_I2S_HANDLE, (ui16*)PCM_Buffer, qcfgPCM_BUFFER_SIZE);
 
 	state = uPL_PLAY;
-
 
 	return uPL_OK;
 }
@@ -949,22 +979,12 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 {
 	Init();
 
-	ScanFolders();//"flac"
-	selectedFolderIndex = 0;
+//	ScanFolders("flac");
+//	selectedFolderIndex = 0;
 
-	FRESULT res;
-
-	char original_path [64] = { 0 };
-
-	res = f_getcwd(original_path, sizeof(original_path));
-
-	res = f_mkdir("0:/cache");
-	res = f_chmod("0:/cache", AM_HID, AM_HID);
-
-	res = f_mkdir(qcfgCACHE_IMG_PATH);
-
-//	InitFolder("/flac/Bounce Into The Music");
-	InitFolder("/mymusic/mp3nik");
+	InitFolder("/flac/Bounce Into The Music");
+//	InitFolder("/flac/CMP");
+//	InitFolder("/mymusic/mp3nik");
 //	InitFolder("/mymusic/wav");
 //	InitFolder("/mymusic/flac");
 
