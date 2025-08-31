@@ -3,7 +3,7 @@
 <table>
   <tr>
     <td align="left" width="60">
-      <img src="Pictures/icon.png" width="60" alt="Project Icon">
+      <img src="Pictures/shiroko-dance.gif" width="60" alt="Project Icon">
     </td>
     <td align="center">
       <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=500&duration=4000&pause=500&color=0EB1F7&width=435&lines=MicroPlayer;Music+is+always+near" alt="Typing SVG" />
@@ -33,29 +33,30 @@
 ### 🎶 About MicroPlayer
 
 - Lightweight embedded **music player** for microcontrollers.  
-- Supports basic playback and simple UI rendering.  
+- Supports basic playback and GUI rendering.  
 - Designed for **low-resource environments**.  
 - Expandable for new formats and features.  
 
 ---
 
-### ✨ Features (Template)
+### ✨ Features 
 
-- ✅ Play MP3/FLAC/WAV (customizable list)  
-- ✅ Metadata parsing (title, artist, album, cover)  
+- ✅ Play MP3/FLAC/WAV
+- ✅ Metadata parsing 
 - ✅ Compact and optimized for STM32  
-- ✅ Simple and clear UI  
+- ✅ Simple and clear GUI  
+---
+
+<p align="center"> <img src="Pictures/shiroko-dance.gif" width="300" alt="Device 1"> <img src="Pictures/shiroko-dance.gif" width="300" alt="Device 2"> <img src="Pictures/shiroko-dance.gif" width="300" alt="Device 3"> </p> <details> <summary>📷 View More Photos</summary> <p align="center"> <img src="Pictures/shiroko-dance.gif" width="300" alt="Device 4"> <img src="Pictures/shiroko-dance.gif" width="300" alt="Device 5"> </p> </details>
 
 ---
-<p align="center"> <img src="Pictures/device1.png" width="400" alt="Device 1"> <img src="Pictures/device2.png" width="400" alt="Device 2"> <img src="Pictures/device3.png" width="400" alt="Device 3"> </p> <details> <summary>📷 View More Photos</summary> <p align="center"> <img src="Pictures/device4.png" width="400" alt="Device 4"> <img src="Pictures/device5.png" width="400" alt="Device 5"> </p> </details>
----
-<p align="center"> <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" alt="Build Status" /> <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /> <img src="https://img.shields.io/badge/language-C++-orange?style=flat-square" alt="Language" /> <img src="https://img.shields.io/badge/platform-STM32-lightgrey?style=flat-square" alt="Platform" /> </p> </div> ```
+<p align="center"> <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" alt="Build Status" /> <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /> <img src="https://img.shields.io/badge/language-C++-orange?style=flat-square" alt="Language" /> <img src="https://img.shields.io/badge/platform-STM32-lightgrey?style=flat-square" alt="Platform" /> </p> </div>
+
 ### 📂 Project Structure
-
 ```bash
 MicroPlayer/
-├── src/          # Source code
-├── inc/          # Header files
-├── Pictures/     # Icons, avatars, device photos
+├── HighLayer/    # Source code
+├── LowLayer/          
+├── Middleware/     
 ├── docs/         # Documentation
 └── README.md     # This file
