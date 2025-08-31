@@ -22,7 +22,8 @@ extern		"C" {
 #include	"stdlib.h"
 #include	"math.h"
 #include	"stdarg.h"
-
+#include	"stdbool.h"
+#include	"ff.h"
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *													 Types and Constants
@@ -140,6 +141,61 @@ static inline double ConvertRadiansToDegrees (double radian)
 static inline double ConvertDegreesToRadians (double degree)
 {
 	return degree * M_PI / 180.0;
+}
+
+
+static inline ui32 DecodeSyncsafeTo_u32 (ui8* b)
+{
+	return ((b[0]&0x7F) << 21) | ((b[1]&0x7F) << 14) | ((b[2]&0x7F) << 7) | (b[3]&0x7F);
+}
+
+
+static inline ui16 TransformBigEndianTo16Bit (const ui8 *p)
+{
+	return (ui16)((p[0] << 8) | p[1]);
+}
+
+
+static inline ui32 TransformBigEndianTo32Bit (const ui8 *p)
+{
+	return ((ui32)p[0] << 24) | ((ui32)p[1] << 16) | ((ui32)p[2] << 8) | (ui32)p[3];
+}
+
+
+static inline int SafeRead_u8 (FIL* f, ui8 *out)
+{
+	UINT br;
+	if (f_read(f, out, 1, &br) !=FR_OK || br != 1) return -1;
+	return 0;
+}
+
+
+static inline int SafeReadBytes (FIL* file, void *buf, UINT len)
+{
+	UINT br;
+	if (f_read(file, buf, len, &br) !=FR_OK || br != len) return -1;
+	return 0;
+}
+
+static inline size_t TransformCodePointToUTF8 (ui32 cp, char *dst, size_t dstsz)
+{
+    if (cp <= 0x7F)
+    {
+    	if (dstsz < 1) return 0;
+    	dst[0]=(char)cp; return 1;
+    }
+    if (cp <= 0x7FF)
+    {
+    	if (dstsz < 2) return 0;
+    	dst[0] = (char)(0xC0 | (cp >> 6)); dst[1] = (char)(0x80 | (cp&0x3F)); return 2;
+    }
+    if (cp <= 0xFFFF)
+    {
+    	if (dstsz < 3) return 0;
+    	dst[0] = (char)(0xE0 | (cp >> 12)); dst[1] = (char)(0x80 | ((cp >> 6)&0x3F)); dst[2] = (char)(0x80 | (cp&0x3F)); return 3;
+    }
+    if (dstsz < 4) return 0;
+    dst[0] = (char)(0xF0 | (cp >> 18)); dst[1] = (char)(0x80 | ((cp >> 12)&0x3F)); dst[2] = (char)(0x80 | ((cp >> 6)&0x3F)); dst[3] = (char)(0x80 | (cp&0x3F)); return 4;
 }
 
 /*  = = = = = = = = = = = = = = = = = = = = = = = */

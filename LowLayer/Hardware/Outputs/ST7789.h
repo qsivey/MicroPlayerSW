@@ -53,55 +53,10 @@
 										for (int k = 0; k < 60; k++)\
 											ST7789_DrawFilledRectangle(i * 4, k * 4, 4, 4, rand() % 65536)
 
-/*
- * Comment one to use another.
- * 3 parameters can be choosed
- * 135x240(0.96 inch) & 240x240(1.3inch) & 170x320(1.9inch)
- * X_SHIFT & Y_SHIFT are used to adapt different display's resolution
- */
-
-/* Choose a type you are using */
-//#define USING_135X240
 #define USING_240X240
-//#define USING_170X320
 
-/* Choose a display rotation you want to use: (0-3) */
-//#define ST7789_ROTATION 0
-//#define ST7789_ROTATION 1
-#define ST7789_ROTATION 2				//  use Normally on 240x240
-//#define ST7789_ROTATION 3
-
-#ifdef USING_135X240
-
-    #if ST7789_ROTATION == 0
-        #define ST7789_WIDTH 135
-        #define ST7789_HEIGHT 240
-        #define X_SHIFT 53
-        #define Y_SHIFT 40
-    #endif
-
-    #if ST7789_ROTATION == 1
-        #define ST7789_WIDTH 240
-        #define ST7789_HEIGHT 135
-        #define X_SHIFT 40
-        #define Y_SHIFT 52
-    #endif
-
-    #if ST7789_ROTATION == 2
-        #define ST7789_WIDTH 135
-        #define ST7789_HEIGHT 240
-        #define X_SHIFT 52
-        #define Y_SHIFT 40
-    #endif
-
-    #if ST7789_ROTATION == 3
-        #define ST7789_WIDTH 240
-        #define ST7789_HEIGHT 135
-        #define X_SHIFT 40
-        #define Y_SHIFT 53
-    #endif
-
-#endif
+/* Display rotation 0/1/2/3 */
+#define ST7789_ROTATION 2
 
 #ifdef USING_240X240
 
@@ -124,43 +79,7 @@
 
 #endif
 
-#ifdef USING_170X320
-
-	#if ST7789_ROTATION == 0
-        #define ST7789_WIDTH 170
-        #define ST7789_HEIGHT 320
-        #define X_SHIFT 35
-        #define Y_SHIFT 0
-    #endif
-
-    #if ST7789_ROTATION == 1
-        #define ST7789_WIDTH 320
-        #define ST7789_HEIGHT 170
-        #define X_SHIFT 0
-        #define Y_SHIFT 35
-    #endif
-
-    #if ST7789_ROTATION == 2
-        #define ST7789_WIDTH 170
-        #define ST7789_HEIGHT 320
-        #define X_SHIFT 35
-        #define Y_SHIFT 0
-    #endif
-
-    #if ST7789_ROTATION == 3
-        #define ST7789_WIDTH 320
-        #define ST7789_HEIGHT 170
-        #define X_SHIFT 0
-        #define Y_SHIFT 35
-    #endif
-
-#endif
-
-/**
- *Color of pen
- *If you want to use another color, you can choose one in RGB565 format.
- */
-
+// Colors
 #define	WHITE       0xFFFF
 #define BLACK       0x0000
 #define BLUE        0x001F
@@ -246,37 +165,17 @@ typedef enum
 
 }	qeTxDMA_Mode_t;
 
-
 typedef struct
 {
-    ui16		x_start,
-				x_end,
-				y;
+    ui16 		*textBuf;
+    int 		textW;
+    int 		textH;
+    int 		windowW;         // ширина окна (например ширина дисплея)
+    int 		pos;             // текущий сдвиг (0..textW+gap-1)
+    int 		gap;             // пробел между концом и началом (в пикселях)
+    bool 		wrap;           // повторять ли бесконечно
 
-    const char	*str;
-
-    tFont		*font;
-
-    ui16		color,
-				bgColor;
-
-    ui16		total_width;
-    ui16		scroll;
-    ui8			str_len;
-
-    ui16		char_widths [256];
-
-}	ScrollTextState;
-
-
-typedef struct
-{
-	ui16	*buffer;
-    ui16	buf_width;
-    ui16	height;
-
-}	RenderedText;
-
+} qcRunningLine_t;
 
 class qcST7789 : virtual public qcPeripheral
 {
@@ -305,8 +204,8 @@ class qcST7789 : virtual public qcPeripheral
 
 		void				SetRotation (ui8 m);
 
-		void				Translation (char *s, char *output, ui8 length);
-		ui16				Paint (ui16 color, ui16 bgColor, ui8 alpha);
+		void				Translation (char *s, char *output, ui8 length);//?
+		ui16				Paint (ui16 color, ui16 bgColor, ui8 alpha);//?
 
 		void				DrawPixel (ui16 x, ui16 y, ui16 color);
 
@@ -328,9 +227,30 @@ class qcST7789 : virtual public qcPeripheral
 		void				ST7789_DrawTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
 		void				ST7789_DrawFilledTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
 
+		/* Render string */
+		int					RenderStringToRGB565BufferLen(const uint8_t *data, int len,
+		                                  const tFont *font,
+		                                  uint16_t textColor565, uint16_t bgColor565,
+		                                  uint16_t **outBufPtr, int *outW, int *outH);
+
+		void				DrawBufferToDisplay(int x, int y, int w, int h, const uint16_t *buf);
+
+		void 				DrawStringOntoImageLen(uint16_t *imageBuf, int imgW, int imgH,
+													int x, int y,
+													const uint8_t *data, int len,
+													const tFont *font, uint16_t textColor565);
+		/* running line */
+		qcRunningLine_t *marquee_create(const uint8_t *text, int len,
+		                            const tFont *font,
+		                            uint16_t textColor565, uint16_t bgColor565,
+		                            int gap, int windowW);
+
+		void marquee_free(qcRunningLine_t *s);
+		void marquee_step_draw(qcRunningLine_t *s, int x, int y, bool step);
+
+		/* standart string */
 		void				ST7789_WriteChar (ui16 x, ui16 y, const tImage* img, ui16 color, ui16 bgColor);
 		void				ST7789_WriteString (ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor);
-
 
 		void				ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
 		void				ST7789_DrawPartofImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
@@ -339,14 +259,13 @@ class qcST7789 : virtual public qcPeripheral
 		void				ST7789_Rainbow (void);
 
 		/* auxiliary functions for char */
+		int					GetFontHeight(const tFont *font);
+		int					GetBytesPerImage(const tImage *img);
 		uint32_t			utf8_merge_code (const char **ptr);
-		const tChar*		find_char (const tFont *font, int32_t code);
+		const tChar*		FindChar (const tFont *font, int32_t code);
+		const tImage*		FindCharImage(const tFont *font, long int code);
+		inline ui16			RGB565(ui8 r, ui8 g, ui8 b);
 
 };
-
-
-#ifndef ST7789_ROTATION
-    #error You should at least choose a display rotation!
-#endif
 
 #endif	/* _ST7789_H_ */

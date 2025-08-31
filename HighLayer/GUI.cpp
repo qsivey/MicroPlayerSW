@@ -14,6 +14,7 @@
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
  *														   		  Extern
  */
+
 extern uint16_t image_data_BR12[];
 extern uint16_t image_data_BR16[];
 extern uint16_t image_data_BR24[];
@@ -24,6 +25,7 @@ extern uint16_t image_data_SF32[];
 extern uint16_t image_data_SF384[];
 extern uint16_t image_data_SF44[];
 extern uint16_t image_data_SF48[];
+extern uint16_t defaultPicture[];
 
 
 /* ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -31,21 +33,7 @@ extern uint16_t image_data_SF48[];
  */
 void qc_GUI::SetPictureMusic (void)
 {
-	;
-}
-
-
-void qc_GUI::ShowBottomPanel (void)
-{
-	ST7789_DrawFilledRectangle(0, GUI_DISPLAY_HEIGHT - GUI_BOT_PANNEL_HEIGHT,
-								GUI_DISPLAY_WIDTH, GUI_BOT_PANNEL_HEIGHT, GRAY);
-	ST7789_DrawRectangle(10, GUI_DISPLAY_HEIGHT - GUI_BOT_PANNEL_HEIGHT+6,10+240-80,
-							GUI_DISPLAY_HEIGHT - GUI_BOT_PANNEL_HEIGHT+14+6, 1, YELLOW);
-
-	ST7789_DrawFilledCircle(100, GUI_DISPLAY_HEIGHT - GUI_BOT_PANNEL_HEIGHT+6+7, 5, YELLOW);
-
-	ST7789_WriteString(10+240-80+10,240-60+2, (char*)"1:43",&Font20,GRAY,WHITE);
-	ST7789_WriteString(10,180+26, (char*)"name", &Font20,GRAY,WHITE);
+	ST7789_DrawPartofImage(0, 0, 240, 240, defaultPicture);
 }
 
 
@@ -99,25 +87,10 @@ void qc_GUI::HideVolumeBar (void)
 
 void qc_GUI::DrawAttributes (void)
 {
-	if (flac_meta.sampleRate == 44100 ||
-		mp3_meta.sampleRate  == 44100 ||
-		wav_meta.sample_rate == 44100)
-		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF44);
-
-	if (flac_meta.sampleRate == 48000 ||
-		mp3_meta.sampleRate  == 48000 ||
-		wav_meta.sample_rate == 48000)
-		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF48);
-
-	if (flac_meta.sampleRate == 192000 ||
-		mp3_meta.sampleRate  == 192000 ||
-		wav_meta.sample_rate == 192000)
-		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF192);
-
-	if (flac_meta.sampleRate == 32000 ||
-		mp3_meta.sampleRate  == 32000 ||
-		wav_meta.sample_rate == 32000)
-		ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF32);
+	if (Metadata.sampleRate == 44100)  ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF44);
+	if (Metadata.sampleRate == 48000)  ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF48);
+	if (Metadata.sampleRate == 192000) ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF192);
+	if (Metadata.sampleRate == 32000)  ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF32);
 
 	char batlev[16];
 	batteryLevel *= 0.02454;
@@ -132,56 +105,36 @@ void qc_GUI::PrintTrackInfo (void)
 {
 	ST7789_FillColor(BLACK);
 
-	/* flac */
-	if (flac_meta.flag) ST7789_WriteString(10, 195, flac_meta.title, &Font20, WHITE, BLACK);
-	if (flac_meta.flag) ST7789_WriteString(10, 220, flac_meta.artist, &Font16, WHITE, BLACK);
-
-	/* mp3 */
-	if (mp3_meta.flag) ST7789_WriteString(10, 195, mp3_meta.title, &Font20, WHITE, BLACK);
-	if (mp3_meta.flag) ST7789_WriteString(10, 220, mp3_meta.artist, &Font16, WHITE, BLACK);
-
-	/* wav */
-	if (wav_meta.flag) ST7789_WriteString(10, 195, wav_meta.title, &Font20, WHITE, BLACK);
-	if (wav_meta.flag) ST7789_WriteString(10, 220, wav_meta.artist, &Font16, WHITE, BLACK);
+	ST7789_WriteString(10, 195, Metadata.title, &Font20, WHITE, BLACK);
+	ST7789_WriteString(10, 220, Metadata.artist, &Font16, WHITE, BLACK);
 }
 
-
-void qc_GUI::PrintTrackPicture (const TCHAR* path, char original_path)
+void qc_GUI::PrintRender (void)
 {
-	char cachePathBuf [10] = { 0 };
-	JPEG_Temp = qmCreate(qsJPEG_t);
+	uint16_t *buf = NULL;
+	int w, h;
+	int rc = RenderStringToRGB565BufferLen((const uint8_t*)"00:01", strlen("00:01"), &Font20,
+	                                       WHITE, BLACK,
+	                                       &buf, &w, &h);
 
-//	if (f_open(file, path, FA_READ) == FR_OK)
-//	{
-//		RenderJPEG();
-//
-//		ST7789_DrawImage(0, 0, 240, 240, displayBuffer);
-
-//		CacheDisplay(cachePathBuf);
-
-//		f_chdir(&original_path);
-
-//	    f_close(file);
-//	}
-
-	qmFree(JPEG_Temp);
+	if (rc == 0)  DrawBufferToDisplay(10, 20, w, h, buf);
+	qmFree(buf);
 }
-
 
 void qc_GUI::PrintTrackTime (void)
 {
-	float duration_sec = 0;
+	float durationSec = 0;
 	ui32 seconds = 0, minutes = 0;
 	char timeStr[16];
 
-	if (flac_meta.flag || mp3_meta.flag || wav_meta.flag) {
+	if (Metadata.existsFlag)
+	{
 
-		if (flac_meta.flag) duration_sec = (float)flac_meta.totalSamples / flac_meta.sampleRate;
-		if (mp3_meta.flag)  duration_sec = mp3_meta.duration_sec; //not valid
-		if (wav_meta.flag)  duration_sec = (float)wav_meta.data_size    / wav_meta.byte_rate; //not valid
+		if (Metadata.format == uAF_FLAC) durationSec = (float)Metadata.totalSamples / Metadata.sampleRate;
+		if (Metadata.format == uAF_MP3)  durationSec = (float)Metadata.durationSec;
+		if (Metadata.format == uAF_WAV)  durationSec = (float)Metadata.durationSec;
 
-		startTime = qmGetTick();
-		seconds = (ui32)duration_sec;
+		seconds = (ui32)durationSec;
 		minutes = seconds / 60;
 		seconds %= 60;
 
@@ -191,19 +144,19 @@ void qc_GUI::PrintTrackTime (void)
 }
 
 
-void qc_GUI::PrintTrackCurrentTime(void)
-{
-	ui32 seconds = 0, minutes = 0;
-	char timeStr[16];
-	ui32 curTime = (qmGetTick() - startTime) / 1000;
-
-	seconds = curTime;
-	minutes = seconds / 60;
-	seconds %= 60;
-
-	sprintf(timeStr, "%02d:%02d", minutes, seconds);
-	ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
-}
+//void qc_GUI::PrintTrackCurrentTime(void)
+//{
+//	ui32 seconds = 0, minutes = 0;
+//	char timeStr[16];
+//	ui32 curTime = (qmGetTick() - startTime) / 1000;
+//
+//	seconds = curTime;
+//	minutes = seconds / 60;
+//	seconds %= 60;
+//
+//	sprintf(timeStr, "%02d:%02d", minutes, seconds);
+//	ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
+//}
 
 
 void qc_GUI::InitMenu(ui8 selected)

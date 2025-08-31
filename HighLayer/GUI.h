@@ -114,7 +114,6 @@ class qc_GUI : public qcST7789, public qcRealTimeClock, public qcParse
 		/* First level */
 		void				SetPictureMusic (void);
 
-		void				ShowBottomPanel (void);
 		void				HideBottomPanel (void);
 
 		ui32				volumeBarTick;
@@ -125,10 +124,9 @@ class qc_GUI : public qcST7789, public qcRealTimeClock, public qcParse
 		void				HideVolumeBar (void);
 
 		/* Second level */
-		RenderedText 		titleBuf;
-		RenderedText 		artistBuf;
-		ScrollTextState 	scrollTitle;
-		ScrollTextState 	scrollArtist;
+
+		void 				PrintRender (void);
+
 		void				DrawAttributes (void);
 		ui16				batteryLevel;
 

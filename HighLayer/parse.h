@@ -2,9 +2,9 @@
  *
  * 	MicroPlayer project
  *
- *	GitHub:		Nik125Y
- *	Telegram:	@Nik125Y
- *	Email:		topnikm@gmail.com
+ *	GitHub:		qsivey, Nik125Y
+ *	Telegram:	@qsivey, @Nik125Y
+ *	Email:		qsivey@gmail.com, topnikm@gmail.com
  *	____________________________________________________________________
  */
 
@@ -23,8 +23,9 @@
 #include	"tjpgd.h"
 
 #define		MAX_FOLDERS				20
-#define		MAX_NAME_LEN			32
-
+#define		MAX_NAME_LEN			128
+#define 	MAX_BLOCK_SIZE			8 * 1024 * 1024
+#define 	MAX_DIMENSION			3000
 
 #pragma pack(push, 1)
 
@@ -55,55 +56,54 @@ typedef struct
 
 }	qsBMP_InfoHeader_t;
 
+
+typedef enum
+{
+    uAF_UNKNOWN			= 0,
+    uAF_FLAC,
+    uAF_MP3,
+    uAF_WAV
+
+}	qeAudioFormat_t;
+
+
+typedef struct
+{
+	ui32			offset;
+	ui32			size;
+	ui32			width;
+	ui32			height;
+	char			mime [20];
+
+}	qcPicture_t;
+
+
+typedef struct
+{
+    bool 			existsFlag;
+    bool 			pictureFlag;
+
+    qeAudioFormat_t	format;
+
+    ui32			sampleRate;
+    ui64 			totalSamples;
+    ui8 			channels;
+    ui8 			bitsPerSample;
+    ui32			bitRate;
+
+    char			title [64];
+    char			artist [64];
+    char			version [8]; 		// "ID3v1", "ID3v2.3", "ID3v2.4", "None"
+
+    float			durationSec;
+
+    qcPicture_t		picture;
+    ui32			dataSize;
+    ui32			byteRate;
+
+}	qsMetadata_t;
+
 #pragma pack(pop)
-
-typedef struct {
-	bool flag;
-	bool picture_flag;
-    // STREAMINFO
-    uint32_t sampleRate;
-    uint64_t totalSamples;
-    uint8_t channels;
-    uint8_t bitsPerSample;
-
-    // VORBIS_COMMENT
-    char title[64];
-    char artist[64];
-
-    // PICTURE
-    ui32 	pictureOffset;
-    ui32	pictureSize;
-    ui32 	pictureWidth;
-    ui32	pictureHeight;
-} flac_metadata_t;
-
-typedef struct {
-	bool flag;
-	bool picture_flag;
-
-    char title[64];
-    char artist[64];
-
-    //TIME
-    ui32 sampleRate;
-    ui32 bitrate;
-    uint64_t totalSamples;
-    float duration_sec;
-
-    char version[8]; // "ID3v1", "ID3v2.3", "ID3v2.4", "None"
-} mp3_metadata_t;
-
-typedef struct {
-	bool flag;
-	bool picture_flag;
-
-    char title[64];
-    char artist[64];
-
-    ui32 data_size;
-    ui32 sample_rate;
-    ui32 byte_rate;
-} wav_metadata_t;
 
 static const uint16_t bitrate_table[2][16] = {
     // MPEG Version 1
@@ -111,6 +111,7 @@ static const uint16_t bitrate_table[2][16] = {
     // MPEG Version 2/2.5
     { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0 }
 };
+
 
 static const uint16_t samplerate_table[3][4] = {
 		{ 44100, 48000, 32000, 0 }, // MPEG Version 1
@@ -131,6 +132,19 @@ class qcParse
 {
 	public :
 
+		/* JPEG */
+		qsJPEG_t			*JPEG_Temp;
+
+		static size_t		InputJPEG (JDEC* jd, ui8* buff, size_t len);
+		static int			OutputJPEG (JDEC *jd, void *bitmap, JRECT *rect);
+		int					ScaleJPEG (void *bitmap, JRECT *rect);
+		bool				RenderJPEG (void);
+		static int			ReadSignatureJPEG (FIL* f, ui32 offset, ui32 max_size, ui16 *w, ui16 *h);
+
+		/* PNG */
+		static int			ReadSignaturePNG (FIL* f, ui32 offset, ui32 max_size, ui16 *w, ui16 *h);
+
+		/* Cache */
 		FIL					file;
 		char				currentPath [256];
 
@@ -139,37 +153,26 @@ class qcParse
 		char				*imgCacheTable;
 		ui16				imgCacheNumber;
 
-		/* Cache */
 		void				ExtractMetaPicture (char *path);
 		void				CreateImgCacheTable (void);
 		void				CachePicture (char *filename);
 
 		/* Meta */
-		flac_metadata_t		flac_meta;
-		mp3_metadata_t		mp3_meta;
-		wav_metadata_t		wav_meta;
+		qsMetadata_t		Metadata;
+		qeAudioFormat_t		DetectFormat(const char* filename);
+		bool				ParseAudio(const char *filename);
 
-		/* JPEG */
-		qsJPEG_t			*JPEG_Temp;
+		FRESULT				ParseFLAC_Meta (FIL *file);
+		FRESULT  			ParseMP3_Meta (FIL *file);
+		FRESULT				ParseWAV_Meta (FIL *file);
 
-		static size_t		InputJPEG (JDEC* jd, uint8_t* buff, size_t len);
-		static int			OutputJPEG (JDEC *jd, void *bitmap, JRECT *rect);
-		int					ScaleJPEG (void *bitmap, JRECT *rect);
-		bool				RenderJPEG (void);
-
-		void				FlacMetaInfo (void);
-		void				MP3MetaInfo (const TCHAR* path);
-		void				WAVMetaInfo (const TCHAR* path);
-
-		FRESULT				parse_flac_metadata (FIL *file, flac_metadata_t *meta);
-		FRESULT  			parse_mp3_metadata (FIL *file, mp3_metadata_t *meta);
-		FRESULT				parse_wav_metadata (FIL *file, wav_metadata_t *meta);
+		void				CopyID3TextField (FIL* file, ui32 dataPosition, ui32 frameSize, char *string, size_t strinLen);
+		int					ParseFrameHeaderSizeID(char *outID, ui32 *outSize, ui32 versionMajor, const ui8 *header, UINT headerRead);
 
 		/* Folders */
 		char				folders [MAX_FOLDERS][MAX_NAME_LEN];
 		ui8					folderCount;
 		void				ScanFolders (const char* rootPath = "/mymusic");
-		ui32				syncsafe_to_size (uint8_t* bytes);
 
 };
 

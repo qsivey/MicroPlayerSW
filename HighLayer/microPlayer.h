@@ -95,8 +95,8 @@ typedef enum
 
 typedef enum
 {
-	uPL_STATUS_PLAYER					= 0x01,
-	uPL_STATUS_MENU						= 0x02
+	uPL_STATUS_PLAYER					= 0,
+	uPL_STATUS_MENU						= 1
 
 }	uPlayerStatusDisplay_t;
 
@@ -163,20 +163,20 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 		uPlayerFileCodec_t	currentCodec;
 
 		uPlayerStatus_t		(qc_uPlayer::*OpenTrack)(void);
-		uPlayerStatus_t		OpenMP3 (void);
 		uPlayerStatus_t		OpenFLAC (void);
+		uPlayerStatus_t		OpenMP3 (void);
 		uPlayerStatus_t		OpenWAV (void);
 
 		uPlayerStatus_t		(qc_uPlayer::*ReadFrames)(void);
-		uPlayerStatus_t		ReadMP3 (void);
 		uPlayerStatus_t		ReadFLAC_16 (void);
 		uPlayerStatus_t		ReadFLAC_32 (void);
+		uPlayerStatus_t		ReadMP3 (void);
 		uPlayerStatus_t		ReadWAV_16 (void);
 		uPlayerStatus_t		ReadWAV_32 (void);
 
 		uPlayerStatus_t		(qc_uPlayer::*CloseTrack)(void);
-		uPlayerStatus_t		CloseMP3 (void);
 		uPlayerStatus_t		CloseFLAC (void);
+		uPlayerStatus_t		CloseMP3 (void);
 		uPlayerStatus_t		CloseWAV (void);
 
 		/* High layer objects */
@@ -221,7 +221,8 @@ class qc_uPlayer :	public qc_GUI, public qcPCM5142,
 
 		uPlayerStatus_t		Start (void);
 
-		uPlayerStatusDisplay_t StatusDisplay;
+		uPlayerStatusDisplay_t
+							StatusDisplay;
 		ui8					selectedFolderIndex;
 		bool				flagok;
 
