@@ -78,10 +78,8 @@ uPlayerStatus_t qc_uPlayer::OpenFLAC (void)
 	oldSamples = 0;
 
 	ParseAudio(trackPath);
-//	f_open(&file, trackPath, FA_READ);
-//	Metadata.existsFlag = false;
-//	if (parseFLAC_Meta(&file) == FR_OK) Metadata.existsFlag = true;
-	//f_close(&file);
+	PrintTrackInfo();
+	PrintTrackTime();
 
 //	ExtractMetaPicture(trackPath);
 
@@ -117,8 +115,16 @@ uPlayerStatus_t qc_uPlayer::OpenFLAC (void)
 uPlayerStatus_t qc_uPlayer::OpenMP3 (void)
 {
 	ParseAudio(trackPath);
+	if (Metadata.pictureFlag)
+	{
+		if (RenderPngToBuffer(&file, Metadata.picture.offset, Metadata.picture.size) == true)
+			ST7789_DrawPartofImage(0, 0, 240, 240, PNG_Buffer);
+	}
+
+
+
 	PrintTrackInfo();
-	PrintTrackTime();
+//	PrintTrackTime();
 
 	track = qmCreate(drmp3);
 
@@ -212,7 +218,7 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_16 (void)
 		{
 			char timeStr[10];
 			sprintf(timeStr, "%02d:%02d", (int)newSamples / 60, (int)newSamples % 60);
-			ST7789_WriteString(193, 195, timeStr, &Font20, WHITE, BLACK);
+			ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
 		}
 		oldSamples = newSamples;
 	}
@@ -242,7 +248,7 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_32 (void)
 		{
 			char timeStr[10];
 			sprintf(timeStr, "%02d:%02d", (int)newSamples / 60, (int)newSamples % 60);
-			ST7789_WriteString(193, 195, timeStr, &Font20, WHITE, BLACK);
+			ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
 		}
 		oldSamples = newSamples;
 	}
@@ -824,7 +830,7 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 
 				else if (state == uPL_PAUSE)
 				{
-					ST7789_DrawFilledRectangle(0, 0, 240, 19, BLACK);
+					ST7789_DrawFilledRectangle(0, 0, 240, 21, BLACK);
 					ST7789_DrawFilledRectangle(193, 220, 47, 20, BLACK);
 					PrintTrackTime();
 
@@ -845,11 +851,13 @@ uPlayerStatus_t	qc_uPlayer::EventHandler (void)
 			if (StatusDisplay == uPL_STATUS_MENU)
 			{
 				if 		(menu.where == 0) 	Transition(menu.index);
-				else if (menu.where == 1)	{
-					DeinitCodec();
+				else if (menu.where == 1)
+				{
+											DeinitCodec();
 				}
 				else if (menu.where == 2) 	SelectLang(menu.subindex);
-				else if (menu.where == 4) {
+				else if (menu.where == 4)
+				{
 											menu.where = 0;
 											DrawMenu(menu.index);
 				}
@@ -1005,18 +1013,27 @@ uPlayerStatus_t qc_uPlayer::Play (void)
 NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 {
 	Init();
+//	qmDelayMs(10);
+//
+//	textBuffer.buf = NULL;
+//	textBuffer.width = 0;
+//	textBuffer.height = 0;
+//
+//	RenderString(&textBuffer, &Font20, "Hi Hello 00:01", WHITE, BLACK, false);
+//	Show(&textBuffer, 0, 0, 0, 0, textBuffer.height);
+//
+//	while(1);
 
 //	ScanFolders("flac");
 //	selectedFolderIndex = 0;
 
-//	InitFolder("/flac/Bounce Into The Music");
 //	InitFolder("/flac/CMP");
-//	InitFolder("/mymusic/mp3nik");
-	InitFolder("/mymusic/mp3test");
+//	InitFolder("/mp3/japan");
+	InitFolder("/mp3/test");
 //	InitFolder("/mymusic/wav");
 //	InitFolder("/mymusic/flac");
 
-//	PrintRender();
+//	SetPictureMusic();
 	ui32 timeBattery = 0;
 	SetEvent(uPL_EVENT_TRACK_PAUSE_PLAY);
 
@@ -1025,8 +1042,8 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 		if (state == uPL_PLAY)
 			Play();
 
-
-		if (qmGetTick() - timeBattery > 1000) {
+		if (qmGetTick() - timeBattery > 1000)
+		{
 			batteryLevel = ReadBatteryLevel();
 			timeBattery = qmGetTick();
 		}

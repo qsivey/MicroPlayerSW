@@ -308,60 +308,7 @@ void qcST7789::SetRotation (ui8 m)
 }
 
 
-void qcST7789::Translation (char *s, char *output, ui8 length)
-{
-		ui8 x = 160;
-		/* Where x - offset to Russian symbols */
-
-		size_t len = strlen(s);
-
-		if (len > length) return;
-		if (!length) return;
-
-	 	ui8 len_in=(len/2)+1;
-	 	ui8 k=0;
-
-	 	char index[len_in];
-
-		for (ui8 i = 0; i < len; i++)
-		{
-			/* English */
-			if (s[i] < 128){
-			  index[k] = s[i];
-			  k++;
-			}
-			/* Russian */
-			else if (s[i] == 208)
-			{
-			  /* Except Ё or other letter with 208 */
-			  if (s[i + 1] == 129) index[k] = 127; //Ё
-			  else index[k] = x + (s[i + 1] - 176);
-			  k++;
-			  i++;
-			}
-			/* Except ё or other letter with 209 */
-			else if (s[i] == 209){
-				if (s[i + 1] == 145) index[k] = 192; //ё
-				else index[k] = x + (s[i + 1] - 112);
-				k++;
-				i++;
-			}
-			/* Except № */
-			else if (s[i] == 226){
-				index[k] = 193; //№
-				k++;
-				i+=2;
-			}
-		}
-		index[(len/2)] = 0;
-
-		for (int i=0;i<len_in;i++){
-			output[i] = index[i];
-		}
-}
-
-
-ui16 qcST7789::Paint (ui16 color, ui16 bgColor, ui8 alpha)
+ui16 qcST7789::Mix565 (ui16 color, ui16 bgColor, ui8 alpha)
 {
 	ui8 r = (color >> 11) & 0x1F;
 	ui8 g = (color >> 5) & 0x3F;
@@ -371,11 +318,71 @@ ui16 qcST7789::Paint (ui16 color, ui16 bgColor, ui8 alpha)
 	ui8 bgg = (bgColor >> 5) & 0x3F;
 	ui8 bgb = bgColor & 0x1F;
 
-	r =((r*alpha)+(bgr*(63-alpha)))/63;
-	g =((g*alpha)+(bgg*(63-alpha)))/63;
-	b =((b*alpha)+(bgb*(63-alpha)))/63;
+	r = ((r * alpha) + (bgr * (63 - alpha))) / 63;
+	g = ((g * alpha) + (bgg * (63 - alpha))) / 63;
+	b = ((b * alpha) + (bgb * (63 - alpha))) / 63;
+
+//	r = ((r * alpha) + (bgr * (15 - alpha))) / 15;
+//	g = ((g * alpha) + (bgg * (15 - alpha))) / 15;
+//	b = ((b * alpha) + (bgb * (15 - alpha))) / 15;
 
 	return (r << 11) | (g << 5) | b;
+}
+
+
+ui32 qcST7789::UTF8MergeCode (const char **ptr)
+{
+    const ui8 *s = (const ui8 *)(*ptr);
+
+    ui32 code = 0;
+
+    if (s[0] < 0x80)
+    {
+        // English
+        code = s[0];
+        *ptr += 1;
+    }
+    else if ((s[0] & 0xE0) == 0xC0)
+    {
+        // Russia
+        code = (s[0] << 8) | s[1];
+        *ptr += 2;
+    }
+    else if ((s[0] & 0xF0) == 0xE0)
+    {
+        //  №
+        code = (s[0] << 16) | (s[1] << 8) | s[2];
+        *ptr += 3;
+    }
+    else
+    {
+        code = '?';
+        *ptr += 1;
+    }
+
+    return code;
+}
+
+
+const tChar *qcST7789::FindChar (const tFont *font, int32_t code)
+{
+    for (int i = 0; i < font->length; ++i)
+        if (font->chars[i].code == code) return &font->chars[i];
+    return NULL;
+}
+
+
+const tImage *qcST7789::FindCharImage (const tFont *font, long int code)
+{
+    for (int i = 0; i < font->length; ++i)
+        if (font->chars[i].code == code) return font->chars[i].image;
+    return NULL;
+}
+
+
+inline ui16 qcST7789::RGB565 (ui8 r, ui8 g, ui8 b)
+{
+    return ( ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3) );
 }
 
 
@@ -718,223 +725,6 @@ void qcST7789::ST7789_DrawFilledTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui
 	}
 }
 
-/* Render string */
-int qcST7789::GetFontHeight(const tFont *font)
-{
-    if (!font || font->length <= 0) return 0;
-    return font->chars[0].image->height;
-}
-
-int qcST7789::GetBytesPerImage(const tImage *img)
-{
-    if (!img) return 0;
-    if (img->dataSize) return (int)img->dataSize;
-    int bits = img->width * img->height;
-    return (bits + 7) / 8;
-}
-
-int qcST7789::RenderStringToRGB565BufferLen(const uint8_t *data, int len,
-                                  const tFont *font,
-                                  uint16_t textColor565, uint16_t bgColor565,
-                                  uint16_t **outBufPtr, int *outW, int *outH)
-{
-    if (!data || len <= 0 || !font || !outBufPtr || !outW || !outH) return -1;
-
-    int fontH = GetFontHeight(font);
-    if (fontH <= 0) return -2;
-
-    int fallbackWidth = 0;
-    if (font->length > 0 && font->chars[0].image) fallbackWidth = font->chars[0].image->width;
-
-    long totalW = 0;
-    for (int i = 0; i < len; ++i) {
-        const tImage *img = FindCharImage(font, (long int)data[i]);
-        if (img) totalW += img->width;
-        else totalW += fallbackWidth;
-    }
-    if (totalW <= 0) return -3;
-
-    size_t totalPixels = (size_t) totalW * (size_t) fontH;
-    if (totalPixels == 0) return -4;
-    if (totalPixels > (SIZE_MAX / sizeof(uint16_t))) return -5;
-
-    uint16_t *buf = (uint16_t*) malloc(totalPixels * sizeof(uint16_t));
-    if (!buf) return -6;
-
-    for (size_t i = 0; i < totalPixels; ++i) buf[i] = bgColor565;
-
-    long cursorX = 0;
-    for (int si = 0; si < len; ++si) {
-        const tImage *img = FindCharImage(font, (long int)data[si]);
-        int cw = img ? img->width : fallbackWidth;
-        if (!img) {
-
-            cursorX += cw;
-            continue;
-        }
-        const uint8_t *bits = img->data;
-        int bytesPerChar = GetBytesPerImage(img);
-        if (!bits || bytesPerChar <= 0) { cursorX += cw; continue; }
-
-        int bitIndex = 0;
-        for (int y = 0; y < img->height; ++y) {
-            for (int x = 0; x < img->width; ++x) {
-                int byteIndex = bitIndex >> 3; // /8
-                int bitPos = 7 - (bitIndex & 7);
-                uint8_t bit = 0;
-                if (byteIndex < bytesPerChar) bit = (bits[byteIndex] >> bitPos) & 1;
-                if (bit) {
-                    size_t idx = (size_t)y * (size_t) totalW + (size_t)(cursorX + x);
-                    buf[idx] = textColor565;
-                }
-                bitIndex++;
-            }
-        }
-        cursorX += cw;
-    }
-
-    *outBufPtr = buf;
-    *outW = (int) totalW;
-    *outH = fontH;
-    return 0;
-}
-
-
-void qcST7789::DrawBufferToDisplay(int x, int y, int w, int h, const uint16_t *pixels) {
-    size_t npix = (size_t)w * (size_t)h;
-    size_t bytes = npix * 2;
-    ui8 *tmp = (ui8*) malloc(bytes);
-
-    for (size_t i = 0; i < npix; ++i) {
-        uint16_t p = pixels[i];
-        tmp[2*i + 0] = (ui8)(p >> 8);   // high byte first
-        tmp[2*i + 1] = (ui8)(p & 0xFF); // low byte
-    }
-
-    SetAddressWindow((uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h);
-    WriteData(tmp, (ui32)bytes);
-    qmFree(tmp);
-}
-
-void qcST7789::DrawStringOntoImageLen(uint16_t *imageBuf, int imgW, int imgH,
-                            int x, int y,
-                            const uint8_t *data, int len,
-                            const tFont *font, uint16_t textColor565)
-{
-    if (!imageBuf || !data || len <= 0 || !font) return;
-
-    int cw = 25, ch = 23;
-    if (cw <= 0 || ch <= 0) return;
-
-    int totalW = cw * len; unused_(totalW);
-    // Для каждого символа — пишем только текстовые пиксели в imageBuf
-    for (int si = 0; si < len; ++si) {
-        const tImage *img = FindCharImage(font, (long int)data[si]);
-        if (!img) continue;
-        const uint8_t *bits = img->data;
-        int bitIndex = 0;
-        int baseX = x + si * cw;
-        int baseY = y;
-
-        for (int yy = 0; yy < ch; ++yy) {
-            int dstY = baseY + yy;
-            if (dstY < 0 || dstY >= imgH) {
-                bitIndex += cw;
-                continue;
-            }
-            for (int xx = 0; xx < cw; ++xx) {
-                int dstX = baseX + xx;
-                if (dstX < 0 || dstX >= imgW) { bitIndex++; continue; }
-                int byteIndex = bitIndex / 8;
-                int bitPos = 7 - (bitIndex % 8);
-                uint8_t bit = (bits[byteIndex] >> bitPos) & 0x01;
-                if (bit) {
-                    imageBuf[dstY * imgW + dstX] = textColor565;
-                }
-                bitIndex++;
-            }
-        }
-    }
-}
-
-/* --- Running line --- */
-//qcRunningLine_t* qcST7789::marquee_create(const uint8_t *text, int len,
-//                            const tFont *font,
-//                            uint16_t textColor565, uint16_t bgColor565,
-//                            int gap, int windowW)
-//{
-//    if (!text || len <= 0 || !font) return NULL;
-//    int cw = 25, ch = 23;
-//    if (cw <= 0 || ch <= 0) return NULL;
-//
-//    qcRunningLine_t *s = malloc(sizeof(qcRunningLine_t));
-//    if (!s) return NULL;
-//    s->textW = cw * len + gap;
-//    s->textH = ch;
-//    s->windowW = windowW;
-//    s->pos = 0;
-//    s->gap = gap;
-//    s->wrap = true;
-//    // allocate buffer for full text (with gap)
-//    s->textBuf = malloc(sizeof(uint16_t) * s->textW * s->textH);
-//    if (!s->textBuf) { free(s); return NULL; }
-//    // first render text into temp buffer
-//    uint16_t *tmp = (ui16)malloc(sizeof(uint16_t) * (cw * len) * ch);
-//    if (!tmp) { free(s->textBuf); free(s); return NULL; }
-//    int wtmp = 0, htmp = 0;
-//    RenderStringToRGB565BufferLen(text, len, font, textColor565, bgColor565, tmp, &wtmp, &htmp);
-//    // copy tmp into s->textBuf, then fill gap area with bgColor
-//    for (int y = 0; y < ch; ++y) {
-//        // copy text part
-//        for (int x = 0; x < cw * len; ++x) {
-//            s->textBuf[y * s->textW + x] = tmp[y * wtmp + x];
-//        }
-//        // gap area
-//        for (int x = cw * len; x < s->textW; ++x) {
-//            s->textBuf[y * s->textW + x] = bgColor565;
-//        }
-//    }
-//    free(tmp);
-//    return s;
-//}
-//
-//
-//void qcST7789::marquee_free(qcRunningLine_t *s)
-//{
-//    if (!s) return;
-//    if (s->textBuf) free(s->textBuf);
-//    free(s);
-//}
-//
-//
-//void qcST7789::marquee_step_draw(qcRunningLine_t *s, int x, int y, bool step)
-//{
-//    if (!s || !s->textBuf) return;
-//    if (step) {
-//        s->pos++;
-//        if (s->pos >= s->textW) {
-//            if (s->wrap) s->pos = 0;
-//            else s->pos = s->textW - 1;
-//        }
-//    }
-//
-//    if (s->textW <= s->windowW) {
-//        DrawBufferToDisplay(x, y, s->textW, s->textH, s->textBuf);
-//        return;
-//    }
-//
-//    uint16_t *winBuf = malloc(sizeof(uint16_t) * s->windowW * s->textH);
-//    if (!winBuf) return;
-//    for (int row = 0; row < s->textH; ++row) {
-//        for (int col = 0; col < s->windowW; ++col) {
-//            int srcX = (s->pos + col) % s->textW; // wrap-around
-//            winBuf[row * s->windowW + col] = s->textBuf[row * s->textW + srcX];
-//        }
-//    }
-//    DrawBufferToDisplay(x, y, s->windowW, s->textH, winBuf);
-//    free(winBuf);
-//}
-
 
 void qcST7789::ST7789_WriteChar(ui16 x, ui16 y, const tImage* img, ui16 color, ui16 bgColor)
 {
@@ -944,24 +734,25 @@ void qcST7789::ST7789_WriteChar(ui16 x, ui16 y, const tImage* img, ui16 color, u
 
 	int a = 0;
 	bool even = false;
-	uint16_t chrome, pixel;
+	ui16 chrome, pixel;
 
-	for (int i = 0; i < img->height; i++) {
-		for (int k = 0; k < img->width; k++) {
-
+	for (int i = 0; i < img->height; i++)
+	{
+		for (int k = 0; k < img->width; k++)
+		{
 			if (even)
 				chrome = img->data[a] & 0x0F;
 			else
 				chrome = (img->data[a] >> 4) & 0x0F;
 
-			uint8_t alpha = chrome ? ((chrome + 1) * 4) - 1 : 0;
+			ui8 alpha = chrome ? ((chrome + 1) * 4) - 1 : 0;
 
 			if (alpha > 0)
-				pixel = Paint(bgColor, color, alpha);
+				pixel = Mix565(bgColor, color, alpha);
 			else
 				pixel = color;
 
-			WriteData((uint8_t*)&pixel, 1);
+			WriteData((ui8*)&pixel, 1);
 
 			if (even)
 				a++;
@@ -971,12 +762,13 @@ void qcST7789::ST7789_WriteChar(ui16 x, ui16 y, const tImage* img, ui16 color, u
 	}
 }
 
+
 void qcST7789::ST7789_WriteString (ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor)
 {
     displayCheckTxMode(TXDMAM_STATIC_16);
 
     while (*str) {
-        uint32_t code = utf8_merge_code(&str);
+        uint32_t code = UTF8MergeCode(&str);
         const tChar *ch = FindChar(font, code);
         if (!ch || !ch->image) continue;
 
@@ -1033,15 +825,45 @@ void qcST7789::ST7789_DrawPartofImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *dat
 	/* for casual array do not unite adjacent elements */
 
 	for (ui32 i = 0; i < (w * 2 * h); i += w * 2)
-	{
-
 		for (ui32 j = i; j < i + w * 2; j += 2 )
 			{
-			mas[k] = __builtin_bswap16(((ui16)(data[j] << 8) & 0xFF00) | (ui16)data[j + 1]);
+				mas[k] = __builtin_bswap16(((ui16)(data[j] << 8) & 0xFF00) | (ui16)data[j + 1]);
 
-			k++;
+				k++;
 			}
-	}
+
+	WriteData((ui8*)mas, sizeof(ui16) * w * h);
+}
+
+
+void qcST7789::ST7789_DrawPartofImageInverted (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data)
+{
+	/* function for array from LCD Image Conventor */
+
+	displayAssert(x, y);
+
+	if ((x + w - 1) >= ST7789_WIDTH)
+		return;
+	if ((y + h - 1) >= ST7789_HEIGHT)
+		return;
+
+	displayCheckTxMode(TXDMAM_DYNAMIC_8)
+
+	SetAddressWindow(x, y, x + w - 1, y + h - 1);
+
+	ui16 mas [w * h];
+	int k = 0;
+
+	/* for casual array do not unite adjacent elements */
+
+	for (ui32 i = 0; i < (w * 2 * h); i += w * 2)
+		for (ui32 j = i; j < i + w * 2; j += 2 )
+			{
+				mas[k] = __builtin_bswap16(((ui16)(data[j] << 8) & 0xFF00) | (ui16)data[j + 1]);
+				mas[k] = ~mas[k];
+
+				k++;
+			}
 
 	WriteData((ui8*)mas, sizeof(ui16) * w * h);
 }
@@ -1090,55 +912,188 @@ void qcST7789::ST7789_Rainbow (void)
 	}
 }
 
-ui32 qcST7789::utf8_merge_code (const char **ptr)
+
+void qcST7789::RenderString (qsTextBuffer_t *tb, const tFont *font, const char *utf8,
+                             ui16 colorFg, ui16 colorBg, bool transparent)
 {
-    const uint8_t *s = (const uint8_t *)(*ptr);
+    if (!tb || !font || !utf8) return;
 
-    uint32_t code = 0;
-
-    if (s[0] < 0x80) {
-        // английский
-        code = s[0];
-        *ptr += 1;
-    } else if ((s[0] & 0xE0) == 0xC0) {
-        // кириллица
-        code = (s[0] << 8) | s[1];
-        *ptr += 2;
-    } else if ((s[0] & 0xF0) == 0xE0) {
-        //  №
-        code = (s[0] << 16) | (s[1] << 8) | s[2];
-        *ptr += 3;
-    } else {
-        code = '?';
-        *ptr += 1;
+    int totalWidth = 0;
+    const char *s = utf8;
+    while (*s)
+    {
+        ui32 code = UTF8MergeCode(&s);
+        const tImage *img = FindCharImage(font, code);
+        totalWidth += img ? img->width : 4;
     }
 
-    return code;
+    ui16 h = font->chars[0].image->height;
+
+    if (tb->buf) qmFree(tb->buf);
+    tb->buf = (ui16*)malloc((size_t)totalWidth * h * sizeof(ui16));
+    if (!tb->buf)
+    {
+        tb->width = tb->height = 0;
+        return;
+    }
+
+    tb->width = (ui16)totalWidth;
+    tb->height = h;
+
+    for (ui32 i = 0; i < (ui32)totalWidth * h; i++)
+        tb->buf[i] = colorBg;
+
+    ui16 cursorX = 0;
+    s = utf8;
+    while (*s)
+    {
+        ui32 code = UTF8MergeCode(&s);
+        const tImage *img = FindCharImage(font, code);
+        if (img)
+        {
+            DrawGlyphToBuf(tb, cursorX, 0, img, colorFg, colorBg, transparent);
+            cursorX += img->width;
+        }
+        else
+        {
+            cursorX += 4;
+        }
+    }
 }
 
 
-const tChar *qcST7789::FindChar (const tFont *font, int32_t code)
+void qcST7789::DrawGlyphToBuf (qsTextBuffer_t *tb, ui16 x, ui16 y, const tImage *img,
+                               ui16 colorFg, ui16 colorBg, bool transparent)
 {
-    for (int i = 0; i < font->length; ++i)
-        if (font->chars[i].code == code) return &font->chars[i];
-    return NULL;
+    if (!img || !tb || !tb->buf) return;
+
+    ui16 gw = img->width;
+    ui16 gh = img->height;
+    const ui8 *src = img->data;
+    int pixelIndex = 0;
+
+    for (int yy = 0; yy < gh; yy++)
+    {
+        for (int xx = 0; xx < gw; xx++)
+        {
+            int byteIndex = pixelIndex >> 1;
+            ui8 byte = src[byteIndex];
+            ui8 val = (pixelIndex & 1) ? (byte & 0x0F) : (byte >> 4);
+            pixelIndex++;
+
+            if (transparent && val == 0xF) continue;
+
+            tb->buf[(y + yy) * tb->width + (x + xx)] = Mix565(colorFg, colorBg, 63 - val);
+        }
+    }
 }
 
-const tImage *qcST7789::FindCharImage(const tFont *font, long int code)
+
+void qcST7789::UpdateChar (qsTextBuffer_t *tb, const tFont *font, ui16 charIndex, const char *utf8,
+                           ui16 colorFg, ui16 colorBg, bool transparent,
+                           ui16 y0, ui16 scrollX)
 {
-    for (int i = 0; i < font->length; ++i)
-        if (font->chars[i].code == code) return font->chars[i].image;
-    return NULL;
+    if (!tb || !tb->buf || !font || !utf8) return;
+
+    ui16 cursorX = 0;
+    const char *s = utf8;
+    ui16 idx = 0;
+
+    while (*s)
+    {
+        ui32 code = UTF8MergeCode(&s);
+        const tImage *img = FindCharImage(font, code);
+
+        ui16 charW = img ? img->width : 4;
+        if (idx == charIndex)
+        {
+            // обновляем буфер символа
+            if (img) DrawGlyphToBuf(tb, cursorX, 0, img, colorFg, colorBg, transparent);
+
+            int screenX = (int)cursorX - (int)scrollX;
+            if (screenX + charW > 0 && screenX < ST7789_WIDTH)
+            {
+                ui16 drawW = charW;
+                int srcOffsetInChar = 0;
+
+                if (screenX < 0) { srcOffsetInChar = -screenX; drawW += screenX; screenX = 0; }
+                if (screenX + drawW > ST7789_WIDTH) drawW = ST7789_WIDTH - screenX;
+                if (drawW == 0) return;
+
+                ui16 srcStart = (ui16)(cursorX + srcOffsetInChar);
+
+                displayCheckTxMode(TXDMAM_STATIC_16)
+
+                SetAddressWindow((ui16)screenX, y0, (ui16)(screenX + drawW - 1), (ui16)(y0 + tb->height - 1));
+
+                for (ui16 yy = 0; yy < tb->height; yy++)
+                {
+                    const ui16 *rowPtr = &tb->buf[(ui32)yy * tb->width + srcStart];
+                    WriteData((ui8*)rowPtr, drawW);
+                }
+            }
+            return;
+        }
+
+        cursorX += charW;
+        idx++;
+    }
 }
 
-//static void GetMonoFontMetrics(const tFont *font, int *charW, int *charH) {
-//    if (!font || font->length == 0) { *charW = *charH = 0; return; }
-//    const tImage *img = font->chars[0].image;
-//    *charW = img->width;
-//    *charH = img->height;
+void qcST7789::Show (const qsTextBuffer_t *tb, ui16 scrollX, ui16 x, ui16 y, ui16 w, ui16 h)
+{
+    if (!tb || !tb->buf) return;
+    if (h == 0) h = tb->height;
+
+    ui16 bufW = tb->width;
+    ui16 drawW = bufW;
+    if ((int)x + (int)drawW > ST7789_WIDTH) drawW = (ui16)(ST7789_WIDTH - x);
+    if (drawW == 0) return;
+    if (h > tb->height) h = tb->height;
+
+    displayCheckTxMode(TXDMAM_DYNAMIC_8)
+
+    SetAddressWindow(x, y, x + drawW - 1, y + h - 1);
+
+    static ui16 dmaLine[ST7789_WIDTH];
+
+    static ui16 zeroBuf16[32] = {0};
+
+    for (ui16 row = 0; row < h; row++)
+    {
+        ui16 available = (scrollX < bufW) ? (ui16)(bufW - scrollX) : 0;
+        ui16 sendFromBuf = (available >= drawW) ? drawW : available;
+        ui16 fillZeros = drawW - sendFromBuf;
+
+        if (sendFromBuf)
+        {
+            const ui16 *srcPtr = &tb->buf[(ui32)row * tb->width + scrollX];
+
+            for (ui16 i = 0; i < sendFromBuf; i++)
+                dmaLine[i] = srcPtr[i];
+
+            WriteData((ui8*)dmaLine, sendFromBuf);
+        }
+
+        if (fillZeros)
+        {
+            ui16 remaining = fillZeros;
+            while (remaining)
+            {
+                ui16 toSend = remaining > (ui16)(sizeof(zeroBuf16)/sizeof(zeroBuf16[0])) ?
+                               (ui16)(sizeof(zeroBuf16)/sizeof(zeroBuf16[0])) : remaining;
+                WriteData((ui8*)zeroBuf16, toSend);
+                remaining -= toSend;
+            }
+        }
+    }
+}
+
+
+//void qcST7789::ObjectInit (ui16 x, ui16 y, qeGUI_ObjectType_t type)
+//{
+//	obj.x = x; obj.y = y; obj.type = type;
 //}
 
-inline ui16 qcST7789::RGB565(ui8 r, ui8 g, ui8 b)
-{
-    return ( ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3) );
-}
+
+

@@ -87,38 +87,35 @@ void qc_GUI::HideVolumeBar (void)
 
 void qc_GUI::DrawAttributes (void)
 {
-	if (Metadata.sampleRate == 44100)  ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF44);
-	if (Metadata.sampleRate == 48000)  ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF48);
-	if (Metadata.sampleRate == 192000) ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF192);
-	if (Metadata.sampleRate == 32000)  ST7789_DrawPartofImage(0, 0, 30, 19, image_data_SF32);
+	if 		(Metadata.sampleRate == 32000)  ST7789_DrawPartofImageInverted(0, 0, 30, 19, image_data_SF32);
+	else if (Metadata.sampleRate == 44100)  ST7789_DrawPartofImageInverted(0, 0, 30, 19, image_data_SF44);
+	else if (Metadata.sampleRate == 48000)  ST7789_DrawPartofImageInverted(0, 0, 30, 19, image_data_SF48);
+	else if (Metadata.sampleRate == 96000)  ST7789_DrawPartofImageInverted(0, 0, 30, 19, image_data_SF96);
+	else if (Metadata.sampleRate == 192000) ST7789_DrawPartofImageInverted(0, 0, 30, 19, image_data_SF192);
 
-	char batlev[16];
+	if 		(Metadata.bitRate == 12)  	ST7789_DrawPartofImageInverted(34, 0, 30, 19, image_data_BR12);
+	else if (Metadata.bitRate == 16)  	ST7789_DrawPartofImageInverted(34, 0, 30, 19, image_data_BR16);
+	else if (Metadata.bitRate == 24)  	ST7789_DrawPartofImageInverted(34, 0, 30, 19, image_data_BR24);
+	else if (Metadata.bitRate == 32) 	ST7789_DrawPartofImageInverted(34, 0, 30, 19, image_data_BR32);
+
+	char batlev [5];
 	batteryLevel *= 0.02454;
-	sprintf(batlev, "%02d%", (int)batteryLevel);
-	ST7789_WriteString(190, 2, batlev, &Font16, WHITE, BLACK);
-
-	ST7789_WriteString(193, 220, "pause", &Font16, WHITE, BLACK);
+	sprintf(batlev, "%02d%%", (int)batteryLevel);
+	ST7789_WriteString(190, 2, batlev, &Font16, BLACK, WHITE);
+	ST7789_WriteString(193, 220, "Pause", &Font16, WHITE, BLACK);
 }
 
 
 void qc_GUI::PrintTrackInfo (void)
 {
-	ST7789_FillColor(BLACK);
-
+	ST7789_DrawFilledRectangle(10, 195, 195, 240 - 195, BLACK);
 	ST7789_WriteString(10, 195, Metadata.title, &Font20, WHITE, BLACK);
 	ST7789_WriteString(10, 220, Metadata.artist, &Font16, WHITE, BLACK);
 }
 
 void qc_GUI::PrintRender (void)
 {
-	uint16_t *buf = NULL;
-	int w, h;
-	int rc = RenderStringToRGB565BufferLen((const uint8_t*)"00:01", strlen("00:01"), &Font20,
-	                                       WHITE, BLACK,
-	                                       &buf, &w, &h);
-
-	if (rc == 0)  DrawBufferToDisplay(10, 20, w, h, buf);
-	qmFree(buf);
+	donothing_;
 }
 
 void qc_GUI::PrintTrackTime (void)

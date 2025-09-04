@@ -376,14 +376,16 @@ bool qcParse::ParseAudio (const char *filename)
     Metadata.format = DetectFormat(filename);
     Metadata.existsFlag = false;
     if (f_open(&file, filename, FA_READ) == FR_OK)
-
-        switch (Metadata.format) {
-        case uAF_FLAC:		if (ParseFLAC_Meta(&file) == FR_OK) Metadata.existsFlag = true;
-        case uAF_MP3:		if (ParseMP3_Meta(&file) == FR_OK)  Metadata.existsFlag = true;
-        case uAF_WAV: 		if (ParseWAV_Meta(&file) == FR_OK)  Metadata.existsFlag = true;
-        default: 			f_close(&file);
+    {
+        switch (Metadata.format)
+        {
+			case uAF_FLAC:		{if (ParseFLAC_Meta(&file) == FR_OK) Metadata.existsFlag = true; break;}
+			case uAF_MP3:		{if (ParseMP3_Meta(&file) == FR_OK)  Metadata.existsFlag = true; break;}
+			case uAF_WAV: 		{if (ParseWAV_Meta(&file) == FR_OK)  Metadata.existsFlag = true; break;}
+			default: 			Metadata.format = uAF_UNKNOWN;
+        }
+        f_close(&file);
     }
-
     return Metadata.existsFlag;
 }
 
@@ -422,6 +424,7 @@ FRESULT qcParse::ParseFLAC_Meta(FIL* file)
 
     // ---- parse meta ----
     memset(&Metadata, 0, sizeof(qsMetadata_t));
+    Metadata.format = uAF_FLAC;
     strncpy(Metadata.title, "Unknown title", sizeof(Metadata.title)-1);
     strncpy(Metadata.artist, "Unknown artist", sizeof(Metadata.artist)-1);
     Metadata.pictureFlag = false;
@@ -435,7 +438,8 @@ FRESULT qcParse::ParseFLAC_Meta(FIL* file)
     bool haveComment = false;
     bool havePicture = false;
 
-    while (!lastBlock) {
+    while (!lastBlock)
+    {
         ui8 hdr [4];
         if (read_n(hdr, 4) != FR_OK) return FR_DISK_ERR;
 
@@ -460,7 +464,7 @@ FRESULT qcParse::ParseFLAC_Meta(FIL* file)
 
                 Metadata.sampleRate = ((ui32)buf[10] << 12) | ((ui32)buf[11] << 4) | ((ui32)(buf[12] & 0xF0) >> 4);
                 Metadata.channels = (ui8)(((buf[12] & 0x0E) >> 1) + 1);
-                Metadata.bitsPerSample = (ui8)((((buf[12] & 0x01) << 4) | ((buf[13] >> 4) & 0x0F)) + 1);
+                Metadata.bitRate = (ui8)((((buf[12] & 0x01) << 4) | ((buf[13] >> 4) & 0x0F)) + 1);
 
                 ui64 upper4 = (ui64)(buf[13] & 0x0F);
                 Metadata.totalSamples = (upper4 << 32) | ((ui64)buf[14] << 24) | ((ui64)buf[15] << 16) | ((ui64)buf[16] << 8) | (ui64)buf[17];
@@ -556,7 +560,7 @@ FRESULT qcParse::ParseFLAC_Meta(FIL* file)
                 Metadata.picture.width = width;
                 Metadata.picture.height = height;
                 Metadata.pictureFlag = true;
-                snprintf(Metadata.picture.mime, sizeof(Metadata.picture.mime), "image/jpeg");
+                Metadata.picture.type = PC_JPEG;
 
                 if (seek(blockEnd) != FR_OK) return FR_DISK_ERR;
                 break;
@@ -576,6 +580,7 @@ FRESULT qcParse::ParseFLAC_Meta(FIL* file)
 FRESULT qcParse::ParseMP3_Meta (FIL* file)
 {
     memset(&Metadata, 0, sizeof(qsMetadata_t));
+    Metadata.format = uAF_MP3;
     snprintf(Metadata.title,  sizeof(Metadata.title),  "Unknown title");
     snprintf(Metadata.artist, sizeof(Metadata.artist), "Unknown artist");
     Metadata.pictureFlag   = false;
@@ -708,8 +713,8 @@ FRESULT qcParse::ParseMP3_Meta (FIL* file)
                     if (ReadSignaturePNG(file, cur, Metadata.picture.size, &W, &H)) isPNG = 1;
                     else if (ReadSignatureJPEG(file, cur, Metadata.picture.size, &W, &H)) isJPEG = 1;
 
-                    if (isPNG) snprintf(Metadata.picture.mime, sizeof(Metadata.picture.mime), "image/png");
-                    else if (isJPEG) snprintf(Metadata.picture.mime, sizeof(Metadata.picture.mime), "image/jpeg");
+                    if (isPNG) Metadata.picture.type = PC_PNG;
+                    else if (isJPEG) Metadata.picture.type = PC_JPEG;
                     else if (mimeTmp[0]) snprintf(Metadata.picture.mime, sizeof(Metadata.picture.mime), "%s", mimeTmp);
 
                     Metadata.picture.width  = W;
@@ -720,7 +725,7 @@ FRESULT qcParse::ParseMP3_Meta (FIL* file)
             pos = fileDataEnd;
         }
 
-        // --- Parse MPEG ---
+        // ---- Parse MPEG ----
         ui32 fileSize = f_size(file);
         ui32 scanStart = tagEnd;
         ui32 scanLimit = scanStart + 1024u * 1024u;
@@ -743,8 +748,8 @@ FRESULT qcParse::ParseMP3_Meta (FIL* file)
             if (sampleRateIndex == 0x03) continue;
 
             ui8 mpegVersion = (versionBits == 3) ? 0 : 1; // 0: MPEG1, 1: MPEG2/2.5
-            uint16_t bitRate = bitrate_table[mpegVersion][bitRateIndex];
-            uint16_t sampleRate   = samplerate_table[mpegVersion][sampleRateIndex];
+            ui16 bitRate = bitrate_table[mpegVersion][bitRateIndex];
+            ui16 sampleRate   = samplerate_table[mpegVersion][sampleRateIndex];
             if (!bitRate || !sampleRate) continue;
 
             Metadata.bitRate    = (ui32)bitRate * 1000u;
@@ -790,6 +795,10 @@ FRESULT qcParse::ParseWAV_Meta (FIL *file)
 	FRESULT res;
 	UINT br;
 	memset(&Metadata, 0, sizeof(qsMetadata_t));
+	Metadata.format = uAF_WAV;
+    snprintf(Metadata.title,  sizeof(Metadata.title),  "Unknown title");
+    snprintf(Metadata.artist, sizeof(Metadata.artist), "Unknown artist");
+    Metadata.pictureFlag   = false;
 
 	char id[4];
 	ui32 size;
@@ -820,7 +829,7 @@ FRESULT qcParse::ParseWAV_Meta (FIL *file)
 
 			Metadata.sampleRate   = *(ui32*)&fmt_buf[4];
 			Metadata.byteRate     = *(ui32*)&fmt_buf[8];
-			Metadata.bitsPerSample= *(ui16*)&fmt_buf[14];
+			Metadata.bitRate	  = *(ui16*)&fmt_buf[14];
 			Metadata.channels     = *(ui16*)&fmt_buf[2];
 
 			if (size > 16)
@@ -892,6 +901,7 @@ FRESULT qcParse::ParseWAV_Meta (FIL *file)
 		    if (!memcmp(sig, "\x89PNG", 4))
 		    {
 		    	snprintf(Metadata.picture.mime, sizeof(Metadata.picture.mime), "image/png");
+		    	Metadata.picture.type = PC_PNG;
 		        ui16 w = 0, h = 0;
 		        if (ReadSignaturePNG(file, Metadata.picture.offset, Metadata.picture.size, &w, &h))
 		        {
@@ -902,6 +912,7 @@ FRESULT qcParse::ParseWAV_Meta (FIL *file)
 		    else if (!memcmp(sig, "\xFF\xD8", 2))
 		    {
 		    	snprintf(Metadata.picture.mime, sizeof(Metadata.picture.mime), "image/jpeg");
+		    	Metadata.picture.type = PC_JPEG;
 		        ui16 w = 0, h = 0;
 		        if (ReadSignatureJPEG(file, Metadata.picture.offset, Metadata.picture.size, &w, &h))
 		        {
@@ -912,6 +923,7 @@ FRESULT qcParse::ParseWAV_Meta (FIL *file)
 		    else
 		    {
 		    	snprintf(Metadata.picture.mime, sizeof(Metadata.picture.mime), "unknown");
+		    	Metadata.picture.type = PC_UNKNOWN;
 		    }
 
 		    res = f_lseek_ext(file, size, SEEK_CUR);
@@ -1002,7 +1014,7 @@ void qcParse::CopyID3TextField (FIL* file, ui32 dataPosition, ui32 frameSize, ch
                 if (cu[0] == 0xFF && cu[1] == 0xFE) { big_endian = 0; continue; }
                 big_endian = 0;
             }
-            uint16_t u = big_endian ? TransformBigEndianTo16Bit(cu) : (uint16_t)((cu[1] << 8) | cu[0]);
+            ui16 u = big_endian ? TransformBigEndianTo16Bit(cu) : (ui16)((cu[1] << 8) | cu[0]);
             if (u == 0x0000) break;
 
             if (u >= 0xD800 && u <= 0xDBFF)
@@ -1010,7 +1022,7 @@ void qcParse::CopyID3TextField (FIL* file, ui32 dataPosition, ui32 frameSize, ch
                 if (remain < 2) break;
                 if (SafeReadBytes(file, cu, 2) != 0) break;
                 remain -= 2;
-                uint16_t u2 = big_endian ? TransformBigEndianTo16Bit(cu) : (uint16_t)((cu[1] << 8) | cu[0]);
+                ui16 u2 = big_endian ? TransformBigEndianTo16Bit(cu) : (ui16)((cu[1] << 8) | cu[0]);
                 if (u2 >= 0xDC00 && u2 <= 0xDFFF)
                 {
                     ui32 cp = 0x10000 + (((ui32)u-0xD800) << 10) + ((ui32)u2 - 0xDC00);
@@ -1058,4 +1070,148 @@ int qcParse::ParseFrameHeaderSizeID (char *outID, ui32 *outSize, ui32 versionMaj
             *outSize = TransformBigEndianTo32Bit(header + 4);
         return 10;
     }
+}
+
+
+static inline ui16 RgbaTo565 (ui8 r, ui8 g, ui8 b, ui8 a)
+{
+	ui16 rr = (r * a) >> 8;
+	ui16 gg = (g * a) >> 8;
+	ui16 bb = (b * a) >> 8;
+
+    return (ui16)(((rr & 0xF8) << 8) | ((gg & 0xFC) << 3) | (bb >> 3));
+}
+
+
+static void PngleDrawCallback (pngle_t *png, ui32 x, ui32 y, ui32 w, ui32 h, const ui8 *rgba)
+{
+    qcParse *self = reinterpret_cast<qcParse*>(pngle_get_user_data(png));
+    if (self) self->OnPngDraw(x, y, w, h, rgba);
+
+}
+//
+
+/* Быстрый конвертер RGBA8888 -> RGB565 (альфа игнорируем) */
+static inline uint16_t rgba8888_to_rgb565(ui8 r, ui8 g, ui8 b)
+{
+    return (uint16_t)(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
+}
+
+static inline ui32 nn_map_x(ui32 sx, ui32 srcW, ui32 dstW)
+{
+    return (ui32)((((uint64_t)(sx * 2u + 1u)) * dstW) / (2u * srcW));
+}
+static inline ui32 nn_map_y(ui32 sy, ui32 srcH, ui32 dstH)
+{
+    return (ui32)((((uint64_t)(sy * 2u + 1u)) * dstH) / (2u * srcH));
+}
+
+//void qcParse::OnPngDraw (ui32 x, ui32 y, ui32 w, ui32 h, const ui8 *rgba)
+//{
+//    if (!PNG_Buffer || srcW == 0 || srcH == 0) return;
+//
+//    for (ui32 yy = 0; yy < h; ++yy)
+//    {
+//        const ui32 sy = y + yy;
+//        // Предвычислим целевую строку (nearest)
+//        const ui32 dy = nn_map_y(sy, srcH, 240);
+//        if (dy >= 240) continue;
+//
+//        for (ui32 xx = 0; xx < w; ++xx)
+//        {
+//            const ui32 sx = x + xx;
+//            const ui32 dx = nn_map_x(sx, srcW, 240);
+//            if (dx >= 240) continue;
+//
+//            // rgba индекс в пришедшем блоке (row-major, 4 байта на пиксель)
+//            const ui32 idx = (yy * w + xx) * 4u;
+//            const ui8 r = rgba[idx + 0];
+//            const ui8 g = rgba[idx + 1];
+//            const ui8 b = rgba[idx + 2];
+//            // const ui8 a = rgba[idx + 3]; // игнорируем для RGB565
+//
+//            PNG_Buffer[dy * 240 + dx] = rgba8888_to_rgb565(r, g, b);
+//        }
+//    }
+//}
+
+void qcParse::OnPngDraw (ui32 x, ui32 y, ui32 w, ui32 h, const ui8 *rgba)
+{
+    if (!BMP_Buffer || srcW == 0 || srcH == 0)
+        return;
+
+    for (ui32 j = 0; j < h; j++)
+    {
+        for (ui32 i = 0; i < w; i++)
+        {
+            ui32 sx = x + i;
+            ui32 sy = y + j;
+
+            ui32 dx = (sx * (qcfgDISPLAY_WIDTH  - 1)) / (srcW - 1);
+            ui32 dy = (sy * (qcfgDISPLAY_HEIGHT - 1)) / (srcH - 1);
+
+
+            const ui8 *p = &rgba[(j * w + i) * 4];
+            PNG_Buffer[dy * qcfgDISPLAY_WIDTH + dx] = RgbaTo565(p[0], p[1], p[2], p[3]);
+        }
+    }
+}
+
+
+bool qcParse::RenderPngToBuffer (FIL *file, ui32 offset, ui32 size)
+{
+    FRESULT fr;
+    UINT rb;
+    ui8 buf[1024];
+
+    if (!PNG_Buffer)
+    {
+    	PNG_Buffer = (ui16*)malloc(sizeof(ui16) * qcfgDISPLAY_WIDTH * qcfgDISPLAY_HEIGHT);
+        if (!PNG_Buffer) return false;
+    }
+
+    memset(PNG_Buffer, 0, sizeof(ui16) * qcfgDISPLAY_WIDTH * qcfgDISPLAY_HEIGHT);
+
+    fr = f_lseek(file, offset);
+    if (fr != FR_OK) return false;
+
+    pngle_t *png = pngle_new();
+    if (!png) return false;
+
+    srcW = 0;
+    srcH = 0;
+
+    pngle_set_user_data(png, this);
+    pngle_set_draw_callback(png, PngleDrawCallback);
+
+    ui32 consumed = 0;
+    while (consumed < size)
+    {
+        UINT toRead = (size - consumed > sizeof(buf)) ? sizeof(buf) : (size - consumed);
+        fr = f_read(file, buf, toRead, &rb);
+        if (fr != FR_OK || rb == 0)
+        {
+            pngle_destroy(png);
+            return false;
+        }
+
+        int fed = pngle_feed(png, buf, rb);
+        if (fed < 0)
+        {
+            pngle_destroy(png);
+            return false;
+        }
+
+        consumed += rb;
+
+        if (srcW == 0 && pngle_get_width(png) > 0)
+        {
+            srcW = pngle_get_width(png);
+            srcH = pngle_get_height(png);
+        }
+    }
+
+    pngle_destroy(png);
+
+    return (srcW != 0 && srcH != 0);
 }

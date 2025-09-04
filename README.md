@@ -52,11 +52,4 @@
 ---
 <p align="center"> <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" alt="Build Status" /> <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" /> <img src="https://img.shields.io/badge/language-C++-orange?style=flat-square" alt="Language" /> <img src="https://img.shields.io/badge/platform-STM32-lightgrey?style=flat-square" alt="Platform" /> </p> </div>
 
-### 📂 Project Structure
-```bash
-MicroPlayer/
-├── HighLayer/    # Source code
-├── LowLayer/          
-├── Middleware/     
-├── docs/         # Documentation
-└── README.md     # This file
+

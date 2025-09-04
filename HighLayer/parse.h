@@ -19,6 +19,7 @@
 #include	"ff.h"
 #include	"ff_gen_drv.h"
 
+#include	"pngle.h"
 #include	"printf.h"
 #include	"tjpgd.h"
 
@@ -67,12 +68,22 @@ typedef enum
 }	qeAudioFormat_t;
 
 
+typedef enum
+{
+    PC_UNKNOWN			= 0,
+    PC_PNG,
+    PC_JPEG
+
+}	qePictureType_t;
+
+
 typedef struct
 {
 	ui32			offset;
 	ui32			size;
 	ui32			width;
 	ui32			height;
+	qePictureType_t type;
 	char			mime [20];
 
 }	qcPicture_t;
@@ -88,7 +99,6 @@ typedef struct
     ui32			sampleRate;
     ui64 			totalSamples;
     ui8 			channels;
-    ui8 			bitsPerSample;
     ui32			bitRate;
 
     char			title [64];
@@ -103,9 +113,11 @@ typedef struct
 
 }	qsMetadata_t;
 
+
 #pragma pack(pop)
 
-static const uint16_t bitrate_table[2][16] = {
+static const ui16 bitrate_table[2][16] =
+{
     // MPEG Version 1
     { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0 },
     // MPEG Version 2/2.5
@@ -113,7 +125,8 @@ static const uint16_t bitrate_table[2][16] = {
 };
 
 
-static const uint16_t samplerate_table[3][4] = {
+static const ui16 samplerate_table[3][4] =
+{
 		{ 44100, 48000, 32000, 0 }, // MPEG Version 1
 		{ 22050, 24000, 16000, 0 }, // MPEG Version 2
 		{ 11025, 12000, 8000,  0 }  // MPEG Version 2.5
@@ -143,6 +156,13 @@ class qcParse
 
 		/* PNG */
 		static int			ReadSignaturePNG (FIL* f, ui32 offset, ui32 max_size, ui16 *w, ui16 *h);
+		bool 				RenderPngToBuffer (FIL *file, ui32 offset, ui32 size);
+
+		void				OnPngDraw (ui32 x, ui32 y, ui32 w, ui32 h, const ui8 *rgba);
+
+		ui16				*PNG_Buffer;
+		ui32				srcW;
+		ui32				srcH;
 
 		/* Cache */
 		FIL					file;

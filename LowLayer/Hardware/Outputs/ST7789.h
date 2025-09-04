@@ -54,7 +54,7 @@
 											ST7789_DrawFilledRectangle(i * 4, k * 4, 4, 4, rand() % 65536)
 
 #define USING_240X240
-
+#define SCB_CleanDCache_by_Addr;
 /* Display rotation 0/1/2/3 */
 #define ST7789_ROTATION 2
 
@@ -165,17 +165,68 @@ typedef enum
 
 }	qeTxDMA_Mode_t;
 
+
 typedef struct
 {
-    ui16 		*textBuf;
-    int 		textW;
-    int 		textH;
-    int 		windowW;         // ширина окна (например ширина дисплея)
-    int 		pos;             // текущий сдвиг (0..textW+gap-1)
-    int 		gap;             // пробел между концом и началом (в пикселях)
-    bool 		wrap;           // повторять ли бесконечно
+	ui16 *buf;
+	ui16 width;
+	ui16 height;
 
-} qcRunningLine_t;
+} qsTextBuffer_t;
+
+
+typedef enum
+{
+	GUIOT_RECTANGLE					= 0,
+	GUIOT_IMAGE,
+	GUIOT_STRING,
+	GUIOT_VOLUME_BAR,
+	GUIOT_DURATION_BAR,
+	GUIOT_WIDGET
+
+}	qeGUI_ObjectType_t;
+
+
+typedef struct
+{
+	/* Low layer variables */
+	ui16			*buff,
+
+					x,
+					y,
+					width,
+					height;
+
+	bool			visible;
+	ui8				opacity;						// непрозрачность
+
+	bool			needUpdate;
+
+	/* High layer variables */
+	qeGUI_ObjectType_t
+					type;
+
+	i32				*params;
+	ui8				paramsNum;
+
+	void			*customFunc;
+
+}	qsGUI_Object_t;
+
+//
+//void GUI_ShowObject (qsGUI_Object_t *obj)
+//{
+//	obj->visible = true;
+//	obj->needUpdate = true;
+//}
+//
+//
+//void GUI_HideObject (qsGUI_Object_t *obj)
+//{
+//	obj->visible = false;
+//	obj->needUpdate = true;
+//}
+
 
 class qcST7789 : virtual public qcPeripheral
 {
@@ -204,10 +255,13 @@ class qcST7789 : virtual public qcPeripheral
 
 		void				SetRotation (ui8 m);
 
-		void				Translation (char *s, char *output, ui8 length);//?
-		ui16				Paint (ui16 color, ui16 bgColor, ui8 alpha);//?
+		ui16				Mix565 (ui16 color, ui16 bgColor, ui8 alpha);
+		inline ui16			RGB565(ui8 r, ui8 g, ui8 b);
 
-		void				DrawPixel (ui16 x, ui16 y, ui16 color);
+		/* auxiliary functions for char */
+		ui32				UTF8MergeCode (const char **ptr);
+		const tChar*		FindChar (const tFont *font, i32 code);
+		const tImage*		FindCharImage (const tFont *font, long int code);
 
 	public :
 
@@ -227,44 +281,28 @@ class qcST7789 : virtual public qcPeripheral
 		void				ST7789_DrawTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
 		void				ST7789_DrawFilledTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui16 x3, ui16 y3, ui16 color);
 
-		/* Render string */
-		int					RenderStringToRGB565BufferLen(const uint8_t *data, int len,
-		                                  const tFont *font,
-		                                  uint16_t textColor565, uint16_t bgColor565,
-		                                  uint16_t **outBufPtr, int *outW, int *outH);
-
-		void				DrawBufferToDisplay(int x, int y, int w, int h, const uint16_t *buf);
-
-		void 				DrawStringOntoImageLen(uint16_t *imageBuf, int imgW, int imgH,
-													int x, int y,
-													const uint8_t *data, int len,
-													const tFont *font, uint16_t textColor565);
-		/* running line */
-		qcRunningLine_t *marquee_create(const uint8_t *text, int len,
-		                            const tFont *font,
-		                            uint16_t textColor565, uint16_t bgColor565,
-		                            int gap, int windowW);
-
-		void marquee_free(qcRunningLine_t *s);
-		void marquee_step_draw(qcRunningLine_t *s, int x, int y, bool step);
-
-		/* standart string */
 		void				ST7789_WriteChar (ui16 x, ui16 y, const tImage* img, ui16 color, ui16 bgColor);
 		void				ST7789_WriteString (ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor);
 
 		void				ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
 		void				ST7789_DrawPartofImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
+		void				ST7789_DrawPartofImageInverted (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data);
 
 		ui32				ST7789_TestFPS (void);
 		void				ST7789_Rainbow (void);
 
-		/* auxiliary functions for char */
-		int					GetFontHeight(const tFont *font);
-		int					GetBytesPerImage(const tImage *img);
-		uint32_t			utf8_merge_code (const char **ptr);
-		const tChar*		FindChar (const tFont *font, int32_t code);
-		const tImage*		FindCharImage(const tFont *font, long int code);
-		inline ui16			RGB565(ui8 r, ui8 g, ui8 b);
+		qsTextBuffer_t		textBuffer;
+
+		void				RenderString (qsTextBuffer_t *tb, const tFont *font, const char *utf8,
+		                             ui16 colorFg, ui16 colorBg, bool transparent);
+		void				DrawGlyphToBuf (qsTextBuffer_t *tb, ui16 x0, ui16 y0, const tImage *img,
+		                               ui16 colorFg, ui16 colorBg, bool transparent);
+		void				UpdateChar (qsTextBuffer_t *tb, const tFont *font, ui16 charIndex, const char *utf8,
+		                           ui16 colorFg, ui16 colorBg, bool transparent,
+		                           ui16 y0, ui16 scrollX);
+		void				Show (const qsTextBuffer_t *tb, ui16 scrollX, ui16 x, ui16 y, ui16 w, ui16 h);
+
+		qsGUI_Object_t		obj;
 
 };
 
