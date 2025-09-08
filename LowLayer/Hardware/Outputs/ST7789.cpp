@@ -254,6 +254,7 @@ void qcST7789::SetAddressWindow (ui16 x0, ui16 y0, ui16 x1, ui16 y1)
 		{
 			ui8 data1 [] = { (ui8)(x_start & 0xFF), (ui8)(x_start >> 8) };
 			WriteData(data1, 1);
+
 			ui8 data2 [] = { (ui8)(x_end & 0xFF), (ui8)(x_end >> 8)};
 			WriteData(data2, 1);
 		}
@@ -308,84 +309,6 @@ void qcST7789::SetRotation (ui8 m)
 }
 
 
-ui16 qcST7789::Mix565 (ui16 color, ui16 bgColor, ui8 alpha)
-{
-	ui8 r = (color >> 11) & 0x1F;
-	ui8 g = (color >> 5) & 0x3F;
-	ui8 b = color & 0x1F;
-
-	ui8 bgr = (bgColor >> 11) & 0x1F;
-	ui8 bgg = (bgColor >> 5) & 0x3F;
-	ui8 bgb = bgColor & 0x1F;
-
-	r = ((r * alpha) + (bgr * (63 - alpha))) / 63;
-	g = ((g * alpha) + (bgg * (63 - alpha))) / 63;
-	b = ((b * alpha) + (bgb * (63 - alpha))) / 63;
-
-//	r = ((r * alpha) + (bgr * (15 - alpha))) / 15;
-//	g = ((g * alpha) + (bgg * (15 - alpha))) / 15;
-//	b = ((b * alpha) + (bgb * (15 - alpha))) / 15;
-
-	return (r << 11) | (g << 5) | b;
-}
-
-
-ui32 qcST7789::UTF8MergeCode (const char **ptr)
-{
-    const ui8 *s = (const ui8 *)(*ptr);
-
-    ui32 code = 0;
-
-    if (s[0] < 0x80)
-    {
-        // English
-        code = s[0];
-        *ptr += 1;
-    }
-    else if ((s[0] & 0xE0) == 0xC0)
-    {
-        // Russia
-        code = (s[0] << 8) | s[1];
-        *ptr += 2;
-    }
-    else if ((s[0] & 0xF0) == 0xE0)
-    {
-        //  №
-        code = (s[0] << 16) | (s[1] << 8) | s[2];
-        *ptr += 3;
-    }
-    else
-    {
-        code = '?';
-        *ptr += 1;
-    }
-
-    return code;
-}
-
-
-const tChar *qcST7789::FindChar (const tFont *font, int32_t code)
-{
-    for (int i = 0; i < font->length; ++i)
-        if (font->chars[i].code == code) return &font->chars[i];
-    return NULL;
-}
-
-
-const tImage *qcST7789::FindCharImage (const tFont *font, long int code)
-{
-    for (int i = 0; i < font->length; ++i)
-        if (font->chars[i].code == code) return font->chars[i].image;
-    return NULL;
-}
-
-
-inline ui16 qcST7789::RGB565 (ui8 r, ui8 g, ui8 b)
-{
-    return ( ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3) );
-}
-
-
 void qcST7789::ST7789_Init (void)
 {
 	DriverInit();
@@ -400,7 +323,7 @@ void qcST7789::ST7789_Init (void)
     WriteSmallData(ST7789_COLOR_MODE_16bit);
   	WriteCommand(0xB2);				//	Porch control
 	{
-		ui8 data[] = {0x0C, 0x0C, 0x00, 0x33, 0x33};
+		ui8 data [] = { 0x0C, 0x0C, 0x00, 0x33, 0x33 };
 
 		for (ui32 i = 0; i < sizeof(data); i++)
 			WriteSmallData(data[i]);
@@ -467,7 +390,10 @@ void qcST7789::ST7789_Init (void)
 //	qmDelayMs(3000);
 
 }
+
+
 #pragma GCC optimize ("O0")
+
 void qcST7789::ST7789_InvertColors (ui8 invert)
 {
 	displayCheckTxMode(TXDMAM_DYNAMIC_8)
@@ -726,64 +652,64 @@ void qcST7789::ST7789_DrawFilledTriangle (ui16 x1, ui16 y1, ui16 x2, ui16 y2, ui
 }
 
 
-void qcST7789::ST7789_WriteChar(ui16 x, ui16 y, const tImage* img, ui16 color, ui16 bgColor)
-{
-	displayCheckTxMode(TXDMAM_STATIC_16);
+//void qcST7789::ST7789_WriteChar(ui16 x, ui16 y, const tImage* img, ui16 color, ui16 bgColor)
+//{
+//	displayCheckTxMode(TXDMAM_STATIC_16);
+//
+//	SetAddressWindow(x, y, x + img->width - 1, y + img->height - 1);
+//
+//	int a = 0;
+//	bool even = false;
+//	ui16 chrome, pixel;
+//
+//	for (int i = 0; i < img->height; i++)
+//	{
+//		for (int k = 0; k < img->width; k++)
+//		{
+//			if (even)
+//				chrome = img->data[a] & 0x0F;
+//			else
+//				chrome = (img->data[a] >> 4) & 0x0F;
+//
+//			ui8 alpha = chrome ? ((chrome + 1) * 4) - 1 : 0;
+//
+//			if (alpha > 0)
+//				pixel = Mix565(bgColor, color, alpha);
+//			else
+//				pixel = color;
+//
+//			WriteData((ui8*)&pixel, 1);
+//
+//			if (even)
+//				a++;
+//
+//			even = !even;
+//		}
+//	}
+//}
 
-	SetAddressWindow(x, y, x + img->width - 1, y + img->height - 1);
 
-	int a = 0;
-	bool even = false;
-	ui16 chrome, pixel;
-
-	for (int i = 0; i < img->height; i++)
-	{
-		for (int k = 0; k < img->width; k++)
-		{
-			if (even)
-				chrome = img->data[a] & 0x0F;
-			else
-				chrome = (img->data[a] >> 4) & 0x0F;
-
-			ui8 alpha = chrome ? ((chrome + 1) * 4) - 1 : 0;
-
-			if (alpha > 0)
-				pixel = Mix565(bgColor, color, alpha);
-			else
-				pixel = color;
-
-			WriteData((ui8*)&pixel, 1);
-
-			if (even)
-				a++;
-
-			even = !even;
-		}
-	}
-}
-
-
-void qcST7789::ST7789_WriteString (ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor)
-{
-    displayCheckTxMode(TXDMAM_STATIC_16);
-
-    while (*str) {
-        uint32_t code = UTF8MergeCode(&str);
-        const tChar *ch = FindChar(font, code);
-        if (!ch || !ch->image) continue;
-
-        const tImage *img = ch->image;
-
-        if (x + img->width >= ST7789_WIDTH) {
-            x = 0;
-            y += img->height;
-            if (y + img->height >= ST7789_HEIGHT) break;
-        }
-
-        ST7789_WriteChar(x, y, ch->image, color, bgColor);
-        x += ch->image->width;
-    }
-}
+//void qcST7789::ST7789_WriteString (ui16 x, ui16 y, const char *str, tFont *font, ui16 color, ui16 bgColor)
+//{
+//    displayCheckTxMode(TXDMAM_STATIC_16);
+//
+//    while (*str) {
+//        uint32_t code = UTF8MergeCode(&str);
+//        const tChar *ch = FindChar(font, code);
+//        if (!ch || !ch->image) continue;
+//
+//        const tImage *img = ch->image;
+//
+//        if (x + img->width >= ST7789_WIDTH) {
+//            x = 0;
+//            y += img->height;
+//            if (y + img->height >= ST7789_HEIGHT) break;
+//        }
+//
+//        ST7789_WriteChar(x, y, ch->image, color, bgColor);
+//        x += ch->image->width;
+//    }
+//}
 
 
 void qcST7789::ST7789_DrawImage (ui16 x, ui16 y, ui16 w, ui16 h, ui16 *data)
@@ -911,189 +837,3 @@ void qcST7789::ST7789_Rainbow (void)
 		break;
 	}
 }
-
-
-void qcST7789::RenderString (qsTextBuffer_t *tb, const tFont *font, const char *utf8,
-                             ui16 colorFg, ui16 colorBg, bool transparent)
-{
-    if (!tb || !font || !utf8) return;
-
-    int totalWidth = 0;
-    const char *s = utf8;
-    while (*s)
-    {
-        ui32 code = UTF8MergeCode(&s);
-        const tImage *img = FindCharImage(font, code);
-        totalWidth += img ? img->width : 4;
-    }
-
-    ui16 h = font->chars[0].image->height;
-
-    if (tb->buf) qmFree(tb->buf);
-    tb->buf = (ui16*)malloc((size_t)totalWidth * h * sizeof(ui16));
-    if (!tb->buf)
-    {
-        tb->width = tb->height = 0;
-        return;
-    }
-
-    tb->width = (ui16)totalWidth;
-    tb->height = h;
-
-    for (ui32 i = 0; i < (ui32)totalWidth * h; i++)
-        tb->buf[i] = colorBg;
-
-    ui16 cursorX = 0;
-    s = utf8;
-    while (*s)
-    {
-        ui32 code = UTF8MergeCode(&s);
-        const tImage *img = FindCharImage(font, code);
-        if (img)
-        {
-            DrawGlyphToBuf(tb, cursorX, 0, img, colorFg, colorBg, transparent);
-            cursorX += img->width;
-        }
-        else
-        {
-            cursorX += 4;
-        }
-    }
-}
-
-
-void qcST7789::DrawGlyphToBuf (qsTextBuffer_t *tb, ui16 x, ui16 y, const tImage *img,
-                               ui16 colorFg, ui16 colorBg, bool transparent)
-{
-    if (!img || !tb || !tb->buf) return;
-
-    ui16 gw = img->width;
-    ui16 gh = img->height;
-    const ui8 *src = img->data;
-    int pixelIndex = 0;
-
-    for (int yy = 0; yy < gh; yy++)
-    {
-        for (int xx = 0; xx < gw; xx++)
-        {
-            int byteIndex = pixelIndex >> 1;
-            ui8 byte = src[byteIndex];
-            ui8 val = (pixelIndex & 1) ? (byte & 0x0F) : (byte >> 4);
-            pixelIndex++;
-
-            if (transparent && val == 0xF) continue;
-
-            tb->buf[(y + yy) * tb->width + (x + xx)] = Mix565(colorFg, colorBg, 63 - val);
-        }
-    }
-}
-
-
-void qcST7789::UpdateChar (qsTextBuffer_t *tb, const tFont *font, ui16 charIndex, const char *utf8,
-                           ui16 colorFg, ui16 colorBg, bool transparent,
-                           ui16 y0, ui16 scrollX)
-{
-    if (!tb || !tb->buf || !font || !utf8) return;
-
-    ui16 cursorX = 0;
-    const char *s = utf8;
-    ui16 idx = 0;
-
-    while (*s)
-    {
-        ui32 code = UTF8MergeCode(&s);
-        const tImage *img = FindCharImage(font, code);
-
-        ui16 charW = img ? img->width : 4;
-        if (idx == charIndex)
-        {
-            // обновляем буфер символа
-            if (img) DrawGlyphToBuf(tb, cursorX, 0, img, colorFg, colorBg, transparent);
-
-            int screenX = (int)cursorX - (int)scrollX;
-            if (screenX + charW > 0 && screenX < ST7789_WIDTH)
-            {
-                ui16 drawW = charW;
-                int srcOffsetInChar = 0;
-
-                if (screenX < 0) { srcOffsetInChar = -screenX; drawW += screenX; screenX = 0; }
-                if (screenX + drawW > ST7789_WIDTH) drawW = ST7789_WIDTH - screenX;
-                if (drawW == 0) return;
-
-                ui16 srcStart = (ui16)(cursorX + srcOffsetInChar);
-
-                displayCheckTxMode(TXDMAM_STATIC_16)
-
-                SetAddressWindow((ui16)screenX, y0, (ui16)(screenX + drawW - 1), (ui16)(y0 + tb->height - 1));
-
-                for (ui16 yy = 0; yy < tb->height; yy++)
-                {
-                    const ui16 *rowPtr = &tb->buf[(ui32)yy * tb->width + srcStart];
-                    WriteData((ui8*)rowPtr, drawW);
-                }
-            }
-            return;
-        }
-
-        cursorX += charW;
-        idx++;
-    }
-}
-
-void qcST7789::Show (const qsTextBuffer_t *tb, ui16 scrollX, ui16 x, ui16 y, ui16 w, ui16 h)
-{
-    if (!tb || !tb->buf) return;
-    if (h == 0) h = tb->height;
-
-    ui16 bufW = tb->width;
-    ui16 drawW = bufW;
-    if ((int)x + (int)drawW > ST7789_WIDTH) drawW = (ui16)(ST7789_WIDTH - x);
-    if (drawW == 0) return;
-    if (h > tb->height) h = tb->height;
-
-    displayCheckTxMode(TXDMAM_DYNAMIC_8)
-
-    SetAddressWindow(x, y, x + drawW - 1, y + h - 1);
-
-    static ui16 dmaLine[ST7789_WIDTH];
-
-    static ui16 zeroBuf16[32] = {0};
-
-    for (ui16 row = 0; row < h; row++)
-    {
-        ui16 available = (scrollX < bufW) ? (ui16)(bufW - scrollX) : 0;
-        ui16 sendFromBuf = (available >= drawW) ? drawW : available;
-        ui16 fillZeros = drawW - sendFromBuf;
-
-        if (sendFromBuf)
-        {
-            const ui16 *srcPtr = &tb->buf[(ui32)row * tb->width + scrollX];
-
-            for (ui16 i = 0; i < sendFromBuf; i++)
-                dmaLine[i] = srcPtr[i];
-
-            WriteData((ui8*)dmaLine, sendFromBuf);
-        }
-
-        if (fillZeros)
-        {
-            ui16 remaining = fillZeros;
-            while (remaining)
-            {
-                ui16 toSend = remaining > (ui16)(sizeof(zeroBuf16)/sizeof(zeroBuf16[0])) ?
-                               (ui16)(sizeof(zeroBuf16)/sizeof(zeroBuf16[0])) : remaining;
-                WriteData((ui8*)zeroBuf16, toSend);
-                remaining -= toSend;
-            }
-        }
-    }
-}
-
-
-//void qcST7789::ObjectInit (ui16 x, ui16 y, qeGUI_ObjectType_t type)
-//{
-//	obj.x = x; obj.y = y; obj.type = type;
-//}
-
-
-

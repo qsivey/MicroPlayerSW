@@ -166,68 +166,6 @@ typedef enum
 }	qeTxDMA_Mode_t;
 
 
-typedef struct
-{
-	ui16 *buf;
-	ui16 width;
-	ui16 height;
-
-} qsTextBuffer_t;
-
-
-typedef enum
-{
-	GUIOT_RECTANGLE					= 0,
-	GUIOT_IMAGE,
-	GUIOT_STRING,
-	GUIOT_VOLUME_BAR,
-	GUIOT_DURATION_BAR,
-	GUIOT_WIDGET
-
-}	qeGUI_ObjectType_t;
-
-
-typedef struct
-{
-	/* Low layer variables */
-	ui16			*buff,
-
-					x,
-					y,
-					width,
-					height;
-
-	bool			visible;
-	ui8				opacity;						// непрозрачность
-
-	bool			needUpdate;
-
-	/* High layer variables */
-	qeGUI_ObjectType_t
-					type;
-
-	i32				*params;
-	ui8				paramsNum;
-
-	void			*customFunc;
-
-}	qsGUI_Object_t;
-
-//
-//void GUI_ShowObject (qsGUI_Object_t *obj)
-//{
-//	obj->visible = true;
-//	obj->needUpdate = true;
-//}
-//
-//
-//void GUI_HideObject (qsGUI_Object_t *obj)
-//{
-//	obj->visible = false;
-//	obj->needUpdate = true;
-//}
-
-
 class qcST7789 : virtual public qcPeripheral
 {
 	private :
@@ -254,14 +192,6 @@ class qcST7789 : virtual public qcPeripheral
 		void				SetAddressWindow (ui16 x0, ui16 y0, ui16 x1, ui16 y1);
 
 		void				SetRotation (ui8 m);
-
-		ui16				Mix565 (ui16 color, ui16 bgColor, ui8 alpha);
-		inline ui16			RGB565(ui8 r, ui8 g, ui8 b);
-
-		/* auxiliary functions for char */
-		ui32				UTF8MergeCode (const char **ptr);
-		const tChar*		FindChar (const tFont *font, i32 code);
-		const tImage*		FindCharImage (const tFont *font, long int code);
 
 	public :
 
@@ -290,19 +220,6 @@ class qcST7789 : virtual public qcPeripheral
 
 		ui32				ST7789_TestFPS (void);
 		void				ST7789_Rainbow (void);
-
-		qsTextBuffer_t		textBuffer;
-
-		void				RenderString (qsTextBuffer_t *tb, const tFont *font, const char *utf8,
-		                             ui16 colorFg, ui16 colorBg, bool transparent);
-		void				DrawGlyphToBuf (qsTextBuffer_t *tb, ui16 x0, ui16 y0, const tImage *img,
-		                               ui16 colorFg, ui16 colorBg, bool transparent);
-		void				UpdateChar (qsTextBuffer_t *tb, const tFont *font, ui16 charIndex, const char *utf8,
-		                           ui16 colorFg, ui16 colorBg, bool transparent,
-		                           ui16 y0, ui16 scrollX);
-		void				Show (const qsTextBuffer_t *tb, ui16 scrollX, ui16 x, ui16 y, ui16 w, ui16 h);
-
-		qsGUI_Object_t		obj;
 
 };
 

@@ -218,7 +218,7 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_16 (void)
 		{
 			char timeStr[10];
 			sprintf(timeStr, "%02d:%02d", (int)newSamples / 60, (int)newSamples % 60);
-			ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
+//			ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
 		}
 		oldSamples = newSamples;
 	}
@@ -248,7 +248,7 @@ uPlayerStatus_t qc_uPlayer::ReadFLAC_32 (void)
 		{
 			char timeStr[10];
 			sprintf(timeStr, "%02d:%02d", (int)newSamples / 60, (int)newSamples % 60);
-			ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
+//			ST7789_WriteString(185, 195, timeStr, &Font20, WHITE, BLACK);
 		}
 		oldSamples = newSamples;
 	}
@@ -352,10 +352,11 @@ uPlayerStatus_t qc_uPlayer::Init (void)
 	/* All buttons init */
 	ButtonsInit();
 
-	/* Menu init*/
-	InitMenu(0);
-	menu.index = 0;
-	menu.where = 0;
+	/* GUI init*/
+	GUI_Init();
+//	InitMenu(0);
+//	menu.index = 0;
+//	menu.where = 0;
 
 
 	Buttons[BUT_VOL_DOWN].OnPress = [](void *param)
@@ -1027,9 +1028,9 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 //	ScanFolders("flac");
 //	selectedFolderIndex = 0;
 
-//	InitFolder("/flac/CMP");
+	InitFolder("/flac/CMP");
 //	InitFolder("/mp3/japan");
-	InitFolder("/mp3/test");
+//	InitFolder("/mp3/test");
 //	InitFolder("/mymusic/wav");
 //	InitFolder("/mymusic/flac");
 
@@ -1055,5 +1056,6 @@ NORETURN__ uPlayerStatus_t qc_uPlayer::Start (void)
 
 		ButtonsHandle();
 		EventHandler();
+		GUI_HandleObjects();
 	}
 }
