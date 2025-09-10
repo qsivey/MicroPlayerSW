@@ -18,11 +18,11 @@
 <table>
   <tr>
     <td align="center" style="border:none;">
-      <img src="Pictures/qsivey.jpeg" width="80" height="80" style="border-radius:50%;"/><br />
+      <img src="Pictures/qsivey.jpg" width="80" height="80" style="border-radius:50%;"/><br />
       <sub><b>qsivey</b></sub>
     </td>
     <td align="center" style="border:none;">
-      <img src="Pictures/Nik125Y.png" width="80" height="80" style="border-radius:50%;"/><br />
+      <img src="Pictures/Nik125Y.jpg" width="80" height="80" style="border-radius:50%;"/><br />
       <sub><b>Nik125Y</b></sub>
     </td>
   </tr>
